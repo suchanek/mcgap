@@ -40,27 +40,10 @@ Offset = [0, 0, 0, 0, 0]
 Zero = [0, 0, 0, 0, 0]
 
 # Initialize arrays
-e = []
-_run = []
+e, _run = [0, 0, 0, 0, 0, 0, 0, 0]
 e1 = e2 = ''
-for x in range(8):
-    e.append(0)
-    _run.append(0)
-l = []
-for i in range(5):
-    l.append(0)
-o = []
-for i in range(5):
-    o.append(0)
-s = []
-for i in range(5):
-    s.append(0)
-u = []
-for i in range(5):
-    u.append(0)
-z = []
-for i in range(5):
-    z.append(0)
+l, o, s, u, z = [0, 0, 0, 0, 0]
+
 tab = 0
 key = ''
 val = 0

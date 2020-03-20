@@ -67,7 +67,7 @@ pos1 = ""
 pos2 = ""
 pos3 = ""
 pos4 = ""
-page = ["page[0]", "page[1]", "page[2]", "page[3]", "page[4
+page = ["page[0]", "page[1]", "page[2]", "page[3]", "page[4]"]
 _ref = []
 _res = []
 
@@ -233,7 +233,7 @@ class MotorControl:
 
 		:rtype: object
 		:param unit:
-		:return client:
+		:return True if connected, false otherwise
 		"""
         # no. should be self.connected <- that's the real flag for connection
         # if self.client:
@@ -268,7 +268,7 @@ class MotorControl:
 
     def jogMotor(self, delta):
         """
-		Adjust motor delta.
+		Adjust motor delta. Connects and disconnects.
 
 		:param unit: motor index number
 		:param position: new motor position for delta
@@ -286,7 +286,7 @@ class MotorControl:
         # client = self.connectMotor(unit)
         connected = self.connectMotor(unit)
         if connected:
-            cp = self.readMotor(unit)
+            cp = self.readMotor()
             jogPosition = int(delta) + cp
             self.client.write_register(0x7D, 0x20, unit=unit)
             self.client.write_register(0x0383, 1, unit=unit)
@@ -351,10 +351,11 @@ class MotorControl:
             print "?????????????????????????????????????????????????????????????????????",jogPosition,rp
             self.client.write_register(903, 0, unit=unit)
         #print ""
+        return
 
     def readAlrm(self):
         """
-        Read the position of the 'unit' motor.
+        Read alarm status.
 
         :param unit: motor index number
         :return: motor position in steps.
@@ -383,6 +384,7 @@ class MotorControl:
         """
         Loop on reading the position until
         the 'unit' motor get there.
+        Assumes motor is connected!
 
         :param unit: motor index number
         :return: motor position in user steps.
@@ -432,7 +434,7 @@ class MotorControl:
 
     def readMotor(self):
         """
-		Read the position of the 'unit' motor.
+		Read the position of the 'unit' motor. Assumes motor is connected!
 
 		:param unit: motor index number
 		:return: motor position in user steps.
@@ -448,14 +450,14 @@ class MotorControl:
 
         # log.debug("READING REGISTER ")
         try:
-            #self.connectMotor()
+            # self.connectMotor()
             read = self.client.read_holding_registers(0x00D7, 1, unit=unit)
             upprpos = read.registers[0]
             print "READ MOTOR", unit, "LOC", location, "POS", self.position
             read = self.client.read_holding_registers(0x00C7, 1, unit=unit)
             log.debug(read)
             location = read.registers[0] 
-            self.closeMotor(self.client)
+            # self.closeMotor(self.client)
         except:
             warn(unit, 434)
             return
@@ -466,16 +468,17 @@ class MotorControl:
         T.setLabel(unit, location)
         return location
 
-    def sendMotor(self, location):
+    def sendMotor(self, unit, location):
         """
         Send the 'unit' motor to the user location.
+        Opens and closes motor.
 
         :param unit: motor index number
                location: motor position 
         :return: motor location in user steps.
         """
 
-        unit = self.unit
+        # unit = self.unit
         print "sendMotor", location
 
         if (isinstance(location, str)):
@@ -483,7 +486,7 @@ class MotorControl:
             #print "sendMotor string", location
         # log.debug("Write Coils "+str(joglocation))
 
-        delta = location - self.readMotor(unit)
+        delta = location - self.readMotor()
         if I.outOfRange(unit, delta) > 0:
             print "SEND IS OUT OF RANGE RETURN"
             return
@@ -547,7 +550,6 @@ class MotorControl:
         self.location = rp
         #print "WRITE",unit,position,"SPD",Speed[unit]
 
-    # this really doesn't move the motor - it only sets its internal location
     def setMotor(self, tab):
         """
 		Set the motor position using the location the selected RadioButton.
