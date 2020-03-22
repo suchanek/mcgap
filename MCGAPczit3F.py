@@ -139,14 +139,12 @@ def menu():
 
 def message(unit, mflag, msg):
     if mflag == 1:
-        print(unit,"MESSAGE:",msg,">",page[unit],"<")
-        l = tk.Label(page[unit], font=20, foreground="#000000", text=msg).place(x=100, y=240, width=350, height=25)
-        # Gary - this returns an error when run...
-        l.pack()
+        print(unit,"MESSAGE:",msg,">",page[unit-1],"<")
+        l = tk.Label(main, font=20, foreground="#000000", text=msg).place(x=100, y=50, width=350, height=25)
         mflag = 0
     else:
         print(unit,"BLANK MESSAGE")
-        tk.Label(page[unit], font=20, foreground="#F0F0F0", text=msg).place(x=100, y=240, width=350, height=25)
+        l = tk.Label(main, font=20, foreground="#F0F0F0", text=msg).place(x=100, y=50, width=350, height=25)
 
 
 def warn():
