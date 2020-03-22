@@ -9,7 +9,11 @@ from functools import partial
 import serial
 import usb.core
 import sys
-import os.path
+import os
+
+import os.path as path
+import pathlib
+
 import logging
 import copy
 from time import sleep
@@ -23,9 +27,12 @@ log = logging.getLogger()
 from pymodbus.client.sync import ModbusSerialClient as ModbusClient
 
 # Define Global Variables
+filemenu = 0
 _warn1 = ''
 _mode = 0
 limitSet = "Show"
+# i don't know if this is right but DISABLE is used and wasn't defined globally
+DISABLE = 0
 TEST = 1
 
 mflag = 0
@@ -41,27 +48,15 @@ Offset = [0, 0, 0, 0, 0]
 Zero = [0, 0, 0, 0, 0]
 
 # Initialize arrays
-e = []
+e = [0,0,0,0,0,0,0,0]
+l = [0,0,0,0,0]
+o = [0,0,0,0,0]
+s = [0,0,0,0,0]
+u = [0,0,0,0,0]
+z = [0,0,0,0,0]
 _run = []
+
 e1 = e2 = ''
-for x in range(8):
-    e.append(0)
-    _run.append(0)
-l = []
-for i in range(5):
-    l.append(0)
-o = []
-for i in range(5):
-    o.append(0)
-s = []
-for i in range(5):
-    s.append(0)
-u = []
-for i in range(5):
-    u.append(0)
-z = []
-for i in range(5):
-    z.append(0)
 tab = 0
 key = ''
 val = 0
@@ -82,12 +77,8 @@ pos1 = ""
 pos2 = ""
 pos3 = ""
 pos4 = ""
-page = []
-page.append("page[0]")
-page.append("page[1]")
-page.append("page[2]")
-page.append("page[3]")
-page.append("page[4]")
+page = ["page[0]", "page[1]", "page[2]", "page[3]", "page[4]"]
+
 _ref = []
 _res = []
 
@@ -97,9 +88,26 @@ ports = list(serial.tools.list_ports.comports())
 for p,q,r in ports:
     if "USB" in q:
         continue
-    com = int(filter(str.isdigit, p))
+    #com = int(filter(str.isdigit, p))
+    com = filter(str.isdigit, p)
     print("P",p,com)
-#print(Speed)
+
+PATH = pathlib.Path(__file__).parent.joinpath("").resolve()
+CONFIG_FILENAME = "GAPMC.ozs"
+CONFIG_PATH = PATH.joinpath(CONFIG_FILENAME)
+CONFIG_POSIX = CONFIG_PATH.as_posix()
+#CONFIG_POSIX = path.basename(CONFIG_FILENAME)
+
+DFLT_FILENAME = "GAPMC.dft"
+DFLT_PATH = PATH.joinpath(DFLT_FILENAME)
+DFLT_POSIX = DFLT_PATH.as_posix()
+#DFLT_POSIX = path.basename(DFLT_FILENAME)
+
+print(CONFIG_POSIX)
+print(DFLT_POSIX)
+
+#exit()
+
 
 def exit():
     """
@@ -132,7 +140,9 @@ def menu():
 def message(unit, mflag, msg):
     if mflag == 1:
         print(unit,"MESSAGE:",msg,">",page[unit],"<")
-        tk.Label(page[unit], font=20, foreground="#000000", text=msg).place(x=100, y=240, width=350, height=25)
+        l = tk.Label(page[unit], font=20, foreground="#000000", text=msg).place(x=100, y=240, width=350, height=25)
+        # Gary - this returns an error when run...
+        l.pack()
         mflag = 0
     else:
         print(unit,"BLANK MESSAGE")
@@ -227,7 +237,6 @@ class MotorControl:
         self.upper = upper
         self.client = 0
         self.location = 0
-        #self.connected = self.connectMotor()
         self.connected = False
 
     def closeMotor(self):
@@ -238,9 +247,11 @@ class MotorControl:
 		:param unit:
 		:return:
 		"""
-        #return
-        self.client.close()
-        print("CLOSE")
+        try:
+            self.client.close()
+            print("CLOSE succeeded")
+        except:
+            print("Can't close - null client!")
         return
 
     def connectMotor(self):
@@ -253,8 +264,12 @@ class MotorControl:
 		"""
         if self.connected:
             return True
+        # we should really use the
+        port = self.port
 
         try:
+            # we should really use self.port for port here... -egs-
+            # but we need to set it by reading the actual COM port #
             self.client = ModbusClient(method='rtu',
                               port=port485,
                               retries=1000,
@@ -267,7 +282,7 @@ class MotorControl:
             res = self.client.connect()
         except:
             res = 0
-        # this looks sketchy -egs-
+
         if TEST and self.unit != 0:
             res = 1
             self.client = False
@@ -335,7 +350,6 @@ class MotorControl:
             if rp == "None" or rp == "NoneType":
                 warn(unit, 292)
         else:
-            #rp = Location[unit]
             rp = self.location
             jogPosition = int(delta) + rp
             mflag = 1
@@ -847,7 +861,7 @@ class LocalIO:
         global pos1, pos2, pos3, pos4
         global tmp1, tmp2, tmp3, tmp4
 
-        filename = "GAPMC.dft"
+        filename = DFLT_POSIX
         fileHandle = open(filename, "r")
         records = fileHandle.readlines()
         fileHandle.close()
@@ -906,8 +920,8 @@ class LocalIO:
         .
         :return: 
         '''
-        filename = "GAPMC.ozs"
-        fileHandle = open(filename,"r")
+
+        fileHandle = open(CONFIG_FILENAME,"r")
         records = fileHandle.readlines()
         fileHandle.close()
         record = 0
@@ -1005,10 +1019,10 @@ class LocalIO:
         tab3 = copy.deepcopy(tmp3)
         tab4 = copy.deepcopy(tmp4)
         print("USER ",tab2)
-        filename = os.path.basename(filename)
+        filename = path.basename(filename)
         main.title('GAP Motor Control: using ' + str(filename))
         main.title('USER settings: ' + str(filename))
-        # #print(filename)
+        print(filename)
         #update()
 
     def saveUser(self):
@@ -1124,7 +1138,7 @@ class LocalIO:
         :return:
         """
 
-        filename = "GAPMC.ozs"
+        filename = CONFIG_POSIX
 
         # define file
         ttl1 = "# Motor configurations\n"
@@ -1511,7 +1525,7 @@ class MakeTab:
                     tk.Button(page[1], font=12, text=line[3], command=partial(M1.jogMotor, line[2]), padx=40,
                           relief='ridge').place(x=428, y=jogS+30+row2*20, width=50, height=22)
                     row2 = row2 + 1
-
+        # gary this can't work - the sendMotor command doesn't use an argument of "Enter"
         tk.Button(page[1], font=20, text="Go", command=lambda: M1.sendMotor("Enter"), padx=40).place(x=215, y=175, width=30, height=20)
 
     def tablet2(self):
@@ -1553,7 +1567,7 @@ class MakeTab:
                     tk.Button(page[2], font=12, text=line[3], command=partial(M2.jogMotor, line[2]), padx=40,
                           relief='ridge').place(x=428, y=jogS+30+row2*20, width=50, height=22)
                     row2 = row2 + 1
-
+        # Gary - the argument to sendMotor is wrong...
         tk.Button(page[2], font=20, text="Go", command=lambda: M2.sendMotor("Enter"), padx=40).place(x=215, y=175, width=30, height=20)
 
     def tablet3(self):
@@ -1605,7 +1619,7 @@ class MakeTab:
                     #st = I.convertS2Dcd(line[3], res[3])
                     #tk.Label(page[3], font=12, text=st).place(x=476, y=jogS+30+row2*20, width=50, height=22)
                     row2 = row2 + 1
-
+        # Gary - the argument to sendMotor is wrong...
         tk.Button(page[3], font=20, text="Go", fg="red", command=lambda: M3.sendMotor("Enter"), padx=40).place(x=225, y=160, width=30, height=20)
 
     def tablet4(self):
@@ -1653,7 +1667,7 @@ class MakeTab:
                     tk.Button(page[4], font=12, text=line[3], command=partial(M4.jogMotor, line[2]), padx=40,
                           relief='ridge').place(x=428, y=jogS+30+row2*20, width=50, height=22)
                     row2 = row2 + 1
-
+        # Gary - the argument to sendMotor is wrong...
         tk.Button(page[4], font=20, text="Go", fg="red", command=lambda: M4.sendMotor("Enter"), padx=40).place(x=225, y=160, width=30, height=20)
 
     def warntab(self, unit):
