@@ -140,9 +140,8 @@ def menu():
 def message(unit, mflag, msg):
     if mflag == 1:
         print(unit,"MESSAGE:",msg,">",page[unit],"<")
-        l = tk.Label(page[unit], font=20, foreground="#000000", text=msg).place(x=100, y=240, width=350, height=25)
+        tk.Label(page[unit], font=20, foreground="#000000", text=msg).place(x=100, y=240, width=350, height=25)
         # Gary - this returns an error when run...
-        #l.pack()
         mflag = 0
     else:
         print(unit,"BLANK MESSAGE")
@@ -344,11 +343,11 @@ class MotorControl:
                 client.write_register(0x1803, jogPosition, unit=unit)
                 client.write_register(0x7D, 0x8, unit=unit)
                 rp = self.readDelay(jogPosition)
-            self.closeMotor(client)
+            self.closeMotor()
             #print("jog to",rp)
             log.debug(rp)
             if rp == "None" or rp == "NoneType":
-                warn(unit, 292)
+                warn()
         else:
             rp = self.location
             jogPosition = int(delta) + rp
@@ -395,7 +394,7 @@ class MotorControl:
             read = client.read_holding_registers(0x0080, 1, unit=unit)
             upprpos = read.registers[0]
             read = client.read_holding_registers(0x0081, 1, unit=unit)
-            self.closeMotor(client)
+            self.closeMotor()
             log.debug(read)
             alarm = read.registers[0]
             self.closeMotor()
@@ -482,9 +481,9 @@ class MotorControl:
             read = self.client.read_holding_registers(0x00C7, 1, unit=unit)
             log.debug(read)
             location = read.registers[0] 
-            self.closeMotor(self.client)
+            self.closeMotor()
         else:
-            warn(unit, 434)
+            warn()
             return
 
         self.position = location
@@ -557,9 +556,9 @@ class MotorControl:
                 client.write_register(0x1803, setPosition, unit=unit)
                 client.write_register(0x7D, 0x8, unit=unit)
                 rp = self.readDelay(setPosition)
-            self.closeMotor(client)
+            self.closeMotor()
             if rp == "None" or rp == "NoneType":
-                warn(unit, 494)
+                warn()
         else:
             rp = Location[unit]
             mflag = 1
@@ -626,13 +625,13 @@ class InputControl:
     """
 
     def _init_(self):
-        self.t = t
-        self.x = x
-        self.y = y
-        self.var = var
-        self.lstr = lstr
-        self.res = res
-        self.unit = unit
+        self.t = 0
+        self.x = 0
+        self.y = 0
+        self.var = 0
+        self.lstr = 0
+        self.res = 0
+        self.unit = 0
 
     def callback(self, var, t, x, y):
         """
