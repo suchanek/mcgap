@@ -173,45 +173,42 @@ def warn():
 
 def run():
     global nb
+    page[1] = ttk.Frame(nb)
+    page[2] = ttk.Frame(nb)
+    page[3] = ttk.Frame(nb)
+    page[4] = ttk.Frame(nb)
+
     if M1.connected:
-        page[1] = ttk.Frame(nb)
         item1 = B.tablet1()
         p1=M1.readMotor()
         I.setEntry(1, p1)
         slidePos = T.getRadioButn(1, tab1, page[1])
         slide.set(slidePos)
     else:
-        page[1] = ttk.Frame(nb)
         item1 = B.warntab(1)
     if M2.connected:
-        page[2] = ttk.Frame(nb)
         item2 = B.tablet2()
         p2=M2.readMotor()
         I.setEntry(2 ,p2)
         cmparPos = T.getRadioButn(2, tab2, page[2])
         source.set(cmparPos)
     else:
-        page[2] = ttk.Frame(nb)
         item2 = B.warntab(2)
     if M3.connected:
-        page[3] = ttk.Frame(nb)
         item3 = B.tablet3()
         p3=M3.readMotor()
         I.setEntry(3, p3)
         grat1Pos = T.getRadioButn(3, tab3, page[3])
         grate1.set(grat1Pos)
     else:
-        page[3] = ttk.Frame(nb)
         item3 = B.warntab(3)
     if M4.connected:
-        page[4] = ttk.Frame(nb)
         item4 = B.tablet4()
         p4=M4.readMotor()
         I.setEntry(4, p4)
         grat2Pos = T.getRadioButn(4, tab4, page[4])
         grate2.set(grat2Pos)
     else:
-        page[4] = ttk.Frame(nb)
         item4 = B.warntab(4)
 
 #def update():
