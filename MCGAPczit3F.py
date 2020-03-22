@@ -139,12 +139,14 @@ def menu():
 
 def message(unit, mflag, msg):
     if mflag == 1:
-        print(unit,"MESSAGE:",msg,">",page[unit-1],"<")
-        l = tk.Label(main, font=20, foreground="#000000", text=msg).place(x=100, y=50, width=350, height=25)
+        print(unit,"MESSAGE:",msg,">",page[unit],"<")
+        l = tk.Label(page[unit], font=20, foreground="#000000", text=msg).place(x=100, y=240, width=350, height=25)
+        # Gary - this returns an error when run...
+        #l.pack()
         mflag = 0
     else:
         print(unit,"BLANK MESSAGE")
-        l = tk.Label(main, font=20, foreground="#F0F0F0", text=msg).place(x=100, y=50, width=350, height=25)
+        tk.Label(page[unit], font=20, foreground="#F0F0F0", text=msg).place(x=100, y=240, width=350, height=25)
 
 
 def warn():
@@ -491,6 +493,16 @@ class MotorControl:
         T.setLabel(unit, location)
         return location
 
+    def getLocation(self):
+        """
+        Get value in data entry window.
+        Send motor to that value
+        """
+        location = T.getLabel(self.unit)
+        self.sendMotor(location)
+        self.location = location
+        print("GOT LOCATION",location)
+
     def sendMotor(self, location):
         """
         Send the 'unit' motor to the user location.
@@ -505,11 +517,6 @@ class MotorControl:
         #location = self.location
         print("")
         print("sendMotor", unit, location)
-
-        if (isinstance(location, str)):
-            location = T.getLabel(unit)
-            #print("sendMotor string", location)
-        # log.debug("Write Coils "+str(joglocation))
 
         delta = location - self.readMotor()
         print("CLIENT",unit,self.client)
@@ -1524,7 +1531,7 @@ class MakeTab:
                           relief='ridge').place(x=428, y=jogS+30+row2*20, width=50, height=22)
                     row2 = row2 + 1
         # gary this can't work - the sendMotor command doesn't use an argument of "Enter"
-        tk.Button(page[1], font=20, text="Go", command=lambda: M1.sendMotor("Enter"), padx=40).place(x=215, y=175, width=30, height=20)
+        tk.Button(page[1], font=20, text="Go", command=partial(M1.getLocation), padx=40).place(x=215, y=175, width=30, height=20)
 
     def tablet2(self):
         """
@@ -1566,7 +1573,7 @@ class MakeTab:
                           relief='ridge').place(x=428, y=jogS+30+row2*20, width=50, height=22)
                     row2 = row2 + 1
         # Gary - the argument to sendMotor is wrong...
-        tk.Button(page[2], font=20, text="Go", command=lambda: M2.sendMotor("Enter"), padx=40).place(x=215, y=175, width=30, height=20)
+        tk.Button(page[2], font=20, text="Go", command=partial(M2.getLocation), padx=40).place(x=215, y=175, width=30, height=20)
 
     def tablet3(self):
         """
@@ -1618,7 +1625,7 @@ class MakeTab:
                     #tk.Label(page[3], font=12, text=st).place(x=476, y=jogS+30+row2*20, width=50, height=22)
                     row2 = row2 + 1
         # Gary - the argument to sendMotor is wrong...
-        tk.Button(page[3], font=20, text="Go", fg="red", command=lambda: M3.sendMotor("Enter"), padx=40).place(x=225, y=160, width=30, height=20)
+        tk.Button(page[3], font=20, text="Go", fg="red", command=partial(M3.getLocation), padx=40).place(x=225, y=160, width=30, height=20)
 
     def tablet4(self):
         """
@@ -1666,7 +1673,7 @@ class MakeTab:
                           relief='ridge').place(x=428, y=jogS+30+row2*20, width=50, height=22)
                     row2 = row2 + 1
         # Gary - the argument to sendMotor is wrong...
-        tk.Button(page[4], font=20, text="Go", fg="red", command=lambda: M4.sendMotor("Enter"), padx=40).place(x=225, y=160, width=30, height=20)
+        tk.Button(page[4], font=20, text="Go", fg="red", command=partial(M4.getLocation), padx=40).place(x=225, y=160, width=30, height=20)
 
     def warntab(self, unit):
         """
