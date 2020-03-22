@@ -85,12 +85,18 @@ _res = []
 import serial.tools.list_ports
 
 ports = list(serial.tools.list_ports.comports())
+# discover com port to RS485
+print("PORTS",ports)
+i = 0
 for p,q,r in ports:
-    if "USB" in q:
-        continue
-    #com = int(filter(str.isdigit, p))
-    com = filter(str.isdigit, p)
-    print("P",p,com)
+    i += 1
+    if r.find("FTDIBUS") >= 0:
+        print("RS485","P",p,"Q",q,"R",r)
+        port485=p
+    else:
+        print("MOTOR",i,"port",p)
+
+port485 = "COM6"
 
 PATH = pathlib.Path(__file__).parent.joinpath("").resolve()
 CONFIG_FILENAME = "GAPMC.ozs"
@@ -250,8 +256,7 @@ class MotorControl:
         return
     
     def checkMotor(self):
-        res = self.connectMotor()
-        self.closeMotor()
+        res = self.connected
         return res
     
     def connectMotor(self):
@@ -1415,7 +1420,7 @@ class TabControl:
 
         :return: None
         """
-        #global pos1, pos2, pos3, pos4
+        global pos1, pos2, pos3, pos4
         pos1 = tab1
         pos2 = tab2
         pos3 = tab3
@@ -1454,7 +1459,7 @@ class TabControl:
         :param unit:
         :return:
         '''
-
+        global pos1, pos2, pos3, pos4
         for unit in range(1,5):
             if (unit == 1):
                 tablist = tab1
@@ -1712,16 +1717,6 @@ Main loop, initialize.
 """
 #global variables
 
-# discover com port to RS485
-print("PORTS",ports)
-i = 0
-for p,q,r in ports:
-    i += 1
-    if r.find("FTDIBUS") >= 0:
-        print("RS485","P",p,"Q",q,"R",r)
-        port485=p
-    else:
-        print("MOTOR",i,"port",p)
 
 
 """
@@ -1730,16 +1725,22 @@ Motor check.
 F = LocalIO()
 F.readConfig()
 
-M1 = MotorControl(1, 1, Speed[1], 0, 1, Zero[1], 0, 8000)
-M2 = MotorControl(2, 2, Speed[2], 0, 1, Zero[2], 0, 1000)
-M3 = MotorControl(3, 3, Speed[3], 0, 100, Zero[3], 0, 12500)
-M4 = MotorControl(4, 4, Speed[4], 0, 100, Zero[4], 0, 12500)
-M1.checkMotor()
-M2.checkMotor()
-M3.checkMotor()
-M4.checkMotor()
+M1 = MotorControl(1, "COM3", Speed[1], 0, 1, Zero[1], 0, 8000)
+M2 = MotorControl(2, "COM7", Speed[2], 0, 1, Zero[2], 0, 1000)
+M3 = MotorControl(3, "COM8", Speed[3], 0, 100, Zero[3], 0, 12500)
+M4 = MotorControl(4, "COM10", Speed[4], 0, 100, Zero[4], 0, 12500)
+M1.connectMotor()
+M2.connectMotor()
+M3.connectMotor()
+M4.connectMotor()
 
-TEST = 1
+i = 1
+for m in (M1, M2, M3, M4):
+    res = m.checkMotor()
+    print(f"motor {i} connected: {res}")
+    i += 1
+
+TEST = 0
 if not TEST and not M1.connected and not M2.connected and not M3.connected and not M4.connected:
         warn()
 
