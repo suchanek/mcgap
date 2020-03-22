@@ -208,10 +208,8 @@ def run():
         I.setEntry(4, p4)
         grat2Pos = T.getRadioButn(4, tab4, page[4])
         grate2.set(grat2Pos)
-    else:
+    else: 
         item4 = B.warntab(4)
-
-#def update():
 
 class MotorControl:
     """
@@ -243,13 +241,19 @@ class MotorControl:
 		:param unit:
 		:return:
 		"""
-        try:
-            self.client.close()
-            print("CLOSE succeeded")
-        except:
-            print("Can't close - null client!")
+        if self.connected:
+            try:
+                self.client.close()
+                print("CLOSE succeeded")
+            except:
+                print("Can't close - null client!")
         return
-
+    
+    def checkMotor(self):
+        res = self.connectMotor()
+        self.closeMotor()
+        return res
+    
     def connectMotor(self):
         """
 		Connect to motor unit
@@ -267,7 +271,7 @@ class MotorControl:
             # we should really use self.port for port here... -egs-
             # but we need to set it by reading the actual COM port #
             self.client = ModbusClient(method='rtu',
-                              port=port485,
+                              port=port,
                               retries=1000,
                               timeout=0.4,
                               rtscts=True,
@@ -281,8 +285,8 @@ class MotorControl:
 
         if TEST and self.unit != 0:
             res = 1
-            self.client = False
-            self.connected = False
+            #self.client = False
+            self.connected = True
         if res:
             self.connected = True
             return True
@@ -1725,15 +1729,17 @@ Motor check.
 """
 F = LocalIO()
 F.readConfig()
-#    def __init__(self, unit, port, speed, position, resolution, zero, lower, upper):
+
 M1 = MotorControl(1, 1, Speed[1], 0, 1, Zero[1], 0, 8000)
 M2 = MotorControl(2, 2, Speed[2], 0, 1, Zero[2], 0, 1000)
 M3 = MotorControl(3, 3, Speed[3], 0, 100, Zero[3], 0, 12500)
 M4 = MotorControl(4, 4, Speed[4], 0, 100, Zero[4], 0, 12500)
-M1.connectMotor()
-M2.connectMotor()
-M3.connectMotor()
-M4.connectMotor()
+M1.checkMotor()
+M2.checkMotor()
+M3.checkMotor()
+M4.checkMotor()
+
+TEST = 1
 if not TEST and not M1.connected and not M2.connected and not M3.connected and not M4.connected:
         warn()
 
