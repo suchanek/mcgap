@@ -390,7 +390,7 @@ class MotorControl:
             print("POS:", pos)
             msg = str(pos + int(delta)) + " is Out of Range"
             flag = 0
-            if pos + delta < lower:
+            if pos + int(delta) < lower:
                 flag = 1
 
             if pos + int(delta) > upper:
