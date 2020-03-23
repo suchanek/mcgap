@@ -33,7 +33,7 @@ _mode = 0
 limitSet = "Show"
 # i don't know if this is right but DISABLE is used and wasn't defined globally
 DISABLE = 0
-TEST = 1
+TEST = 0
 mflag = 0
 
 Reference = [0,0,0,0,0]
@@ -83,12 +83,14 @@ _res = []
 import serial.tools.list_ports
 
 ports = list(serial.tools.list_ports.comports())
+"""
 for p,q,r in ports:
     if "USB" in q:
         continue
     #com = int(filter(str.isdigit, p))
     com = filter(str.isdigit, p)
     print("P",p,com)
+"""
 
 PATH = pathlib.Path(__file__).parent.joinpath("").resolve()
 CONFIG_FILENAME = "GAPMC.ozs"
@@ -229,6 +231,7 @@ class MotorControl:
         self.lower = lower
         self.upper = upper
         # make the correct object, don't try to connect
+        '''
         self.client = ModbusClient(method='rtu',
                               retries=1000,
                               timeout=0.4,
@@ -236,6 +239,8 @@ class MotorControl:
                               parity='E',
                               baudrate=9600,
                               unit=self.unit)
+        '''
+        self.client = 0
         self.target = 0 # targeted step location
         self.connected = False
         #print("Client:", self.client)
@@ -264,24 +269,31 @@ class MotorControl:
 		:return client:
 		"""
         if self.connected:
+            print("-- Already Connected?")
             return True
         # we should really use the
         port = self.port
+        unit = self.unit
 
+# ModbusClient(method='rtu', port='/dev/ttyUSB0', parity='N', baudrate=9600, bytesize=8, stopbits=2, timeout=1, strict=False)
+        self.client = ModbusClient(method='rtu',
+                            port=port,
+                            retries=1000,
+                            timeout=0.4,
+                            rtscts=True,
+                            parity='E',
+                            baudrate=9600,
+                            strict=False,
+                            stopbits=2,
+                            unit=unit)
+        print(".. connecting..")
         try:
             # we should really use self.port for port here... -egs-
             # but we need to set it by reading the actual COM port #
-            self.client = ModbusClient(method='rtu',
-                              port=port,
-                              retries=1000,
-                              timeout=0.4,
-                              rtscts=True,
-                              parity='E',
-                              baudrate=9600,
-                              unit=self.unit)
-
+            
             res = self.client.connect()
-        except:
+        except OSError as e:
+            print("--- Can't Connect", unit)
             res = 0
 
         if TEST:
@@ -291,6 +303,7 @@ class MotorControl:
 
         if res:
             self.connected = True
+            print("--- Connected ", unit)
             return True
         else:
             self.connected = False
