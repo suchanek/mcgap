@@ -107,9 +107,6 @@ DFLT_POSIX = DFLT_PATH.as_posix()
 print(CONFIG_POSIX)
 print(DFLT_POSIX)
 
-#exit()
-
-
 def exit():
     """
     Provides a single exit point.
@@ -234,9 +231,16 @@ class MotorControl:
         self.zero = zero
         self.lower = lower
         self.upper = upper
-        self.client = 0
+        self.client = ModbusClient(method='rtu',
+                              retries=1000,
+                              timeout=0.4,
+                              rtscts=True,
+                              parity='E',
+                              baudrate=9600,
+                              unit=self.unit)
         self.target = 0 # targeted step location
         self.connected = False
+        print("Client:", self.client)
 
     def closeMotor(self):
         """
@@ -284,8 +288,9 @@ class MotorControl:
 
         if TEST and self.unit != 0:
             res = 1
-            self.client = False
-            self.connected = False
+            self.connected = True
+            return True
+
         if res:
             self.connected = True
             return True
@@ -303,44 +308,43 @@ class MotorControl:
 		"""
         global tk
         unit = self.unit
-        client = self.client
-
+        #client = self.client
         print("")
         print("jogMotor", unit, delta)
         print("CLIENT",unit,self.client)
-        if client and I.outOfRange(unit, delta) > 0:
+        if self.client and self.outOfRange(delta):
             #print("JOG IS OUT OF RANGE RETURN")
             return
         # we don't need try/except since we are not throwing exceptions!
-        if client:
+        if self.client:
             cp = self.readMotor()
             jogPosition = int(delta) + cp
-            client.write_register(0x7D, 0x20, unit=unit)
-            client.write_register(0x0383, 1, unit=unit)
-            client.write_register(0x1805, int(Speed[unit]), unit=unit)
+            self.client.write_register(0x7D, 0x20, unit=unit)
+            self.client.write_register(0x0383, 1, unit=unit)
+            self.client.write_register(0x1805, int(Speed[unit]), unit=unit)
             if int(delta) > 0:
-                client.write_register(0x7D, 0x1000, unit=unit)
+                self.client.write_register(0x7D, 0x1000, unit=unit)
                 print("JOG MOTOR FWD",unit,"FROM",cp,"TO",jogPosition,"BY",int(delta))
             if int(delta) < 0:
-                client.write_register(0x7D, 0x2000, unit=unit)
+                self.client.write_register(0x7D, 0x2000, unit=unit)
                 print("JOG MOTOR REV",unit,"FROM",cp,"TO",jogPosition,"BY",int(delta))
-            client.write_register(0x1803, jogPosition, unit=unit)
-            client.write_register(0x7D, 0x8, unit=unit)
+            self.client.write_register(0x1803, jogPosition, unit=unit)
+            self.client.write_register(0x7D, 0x8, unit=unit)
             rp = self.readDelay(jogPosition) 
             if unit > 20:
-                client.write_register(0x7D, 0x8, unit=unit)
-                client.write_register(0x7D, 0x20, unit=unit)
-                client.write_register(0x7D, 0x0, unit=unit)
-                client.write_register(0x1805, int(Speed[unit]), unit=unit)
-                client.write_register(0x1803, jogPosition - 10, unit=unit)
-                client.write_register(0x7D, 0x8, unit=unit)
+                self.client.write_register(0x7D, 0x8, unit=unit)
+                self.client.write_register(0x7D, 0x20, unit=unit)
+                self.client.write_register(0x7D, 0x0, unit=unit)
+                self.client.write_register(0x1805, int(Speed[unit]), unit=unit)
+                self.client.write_register(0x1803, jogPosition - 10, unit=unit)
+                self.client.write_register(0x7D, 0x8, unit=unit)
                 rp = self.readDelay(jogPosition)
-                client.write_register(0x7D, 0x8, unit=unit)
-                client.write_register(0x7D, 0x20, unit=unit)
-                client.write_register(0x7D, 0x0, unit=unit)
-                client.write_register(0x1805, int(Speed[unit]), unit=unit)
-                client.write_register(0x1803, jogPosition, unit=unit)
-                client.write_register(0x7D, 0x8, unit=unit)
+                self.client.write_register(0x7D, 0x8, unit=unit)
+                self.client.write_register(0x7D, 0x20, unit=unit)
+                self.client.write_register(0x7D, 0x0, unit=unit)
+                self.client.write_register(0x1805, int(Speed[unit]), unit=unit)
+                self.client.write_register(0x1803, jogPosition, unit=unit)
+                self.client.write_register(0x7D, 0x8, unit=unit)
                 rp = self.readDelay(jogPosition)
             #self.closeMotor(client)
             #print("jog to",rp)
@@ -375,9 +379,32 @@ class MotorControl:
         print("JogHERE",unit,jogPosition,"=",rp)
         if jogPosition != rp and client:
             print("?????????????????????????????????????????????????????????????????????",jogPosition,rp)
-            #client.write_register(903, 0, unit=unit)
+            #self.client.write_register(903, 0, unit=unit)
         #print("")
 
+    def outOfRange(self, delta):
+            global tk, Location
+
+            unit = self.unit
+            pos = self.position
+            print("POS:", pos)
+            msg = str(pos + int(delta)) + " is Out of Range"
+            flag = 0
+            if pos + int(delta) < Lower[unit]:
+                flag = 1
+                # potential side effect - why do this?
+                # Location[unit] = Lower[unit]
+            if pos + int(delta) > Upper[unit]:
+                flag = 2
+                # potential side effect - why do this?
+                # Location[unit] = Upper[unit]
+            if flag > 0:
+                tk.Label(page[unit], font=20, foreground="#000000", text=msg).place(x=50, y=240, width=350, height=25)
+            #else:
+            #    tk.Label(page[unit], font=20, foreground="#F0F0F0", text=msg).place(x=50, y=240, width=350, height=25)
+
+            return flag
+    
     def readAlrm(self):
         """
         Check for error of the 'unit' motor.
@@ -429,16 +456,16 @@ class MotorControl:
             delay = (abs(rp - target))*1.2/Speed[unit]
             if ldelay < delay:
                 print("Motor going in wrong direction")
-                client.write_register(0x7D, 0x20, unit=unit)
-                client.write_register(0x7D, 0x0, unit=unit)
-                #client.write_register(0x7D, 0x2, unit=unit)
-                #client.write_register(0x0387, 0, unit=unit)
-                #client.write_register(0x7D, 0x8, unit=unit)
+                self.client.write_register(0x7D, 0x20, unit=unit)
+                self.client.write_register(0x7D, 0x0, unit=unit)
+                #self.client.write_register(0x7D, 0x2, unit=unit)
+                #self.client.write_register(0x0387, 0, unit=unit)
+                #self.client.write_register(0x7D, 0x8, unit=unit)
                 break
             if ldelay == delay and reps == 5:
                 print("Motor not going from",rp,"to",target)
-                #client.write_register(0x0E01, 0, unit=unit)
-                #client.write_register(0x0387, 0, unit=unit)
+                #self.client.write_register(0x0E01, 0, unit=unit)
+                #self.client.write_register(0x0387, 0, unit=unit)
                 break
             msg = "Wait " + str(int(10.0*delay)/10.0) + " sec"
             #tk.Label(page[unit], font=20, foreground="#000000", text=msg).place(x=50, y=240, width=350, height=25)
@@ -505,48 +532,52 @@ class MotorControl:
         """
         location = self.target
         unit = self.unit
-        client = self.client
         print("")
         print("sendMotor", unit, location)
 
-        delta = location - self.readMotor()
+        if TEST:
+            pos = 1000
+        else:
+            pos = self.readMotor()
+        
+        delta = location - pos
         print("CLIENT",unit,self.client)
-        if client and I.outOfRange(unit, delta) > 0:
+        if self.client and self.outOfRange(delta):
             print("SEND IS OUT OF RANGE RETURN")
             return
-        if client:
+        if self.client:
             setPosition = int(location) 
             print("SEND WRITE TRY ",unit," TO ",setPosition)
-            client.write_register(0x7D, 0x20, unit=unit)
-            #client.write_register(0x7D, 0x0, unit=unit)
-            client.write_register(0x1801, 1, unit=unit)
-            client.write_register(0x0383, 1, unit=unit)
-            client.write_register(0x1805, int(Speed[unit]), unit=unit)
+            self.client.write_register(0x7D, 0x20, unit=unit)
+            #self.client.write_register(0x7D, 0x0, unit=unit)
+            self.client.write_register(0x1801, 1, unit=unit)
+            self.client.write_register(0x0383, 1, unit=unit)
+            self.client.write_register(0x1805, int(Speed[unit]), unit=unit)
             if int(delta) > 0:
-                #client.write_register(0x7D, 0x4000, unit=unit)
-                #client.write_register(0x7D, 0x0, unit=unit)
+                #self.client.write_register(0x7D, 0x4000, unit=unit)
+                #self.client.write_register(0x7D, 0x0, unit=unit)
                 print("SEND MOTOR FWD", unit, self.position)
             if int(delta) < 0:
-                #client.write_register(0x7D, 0x8000, unit=unit)
-                #client.write_register(0x7D, 0x0, unit=unit)
+                #self.client.write_register(0x7D, 0x8000, unit=unit)
+                #self.client.write_register(0x7D, 0x0, unit=unit)
                 print("SEND MOTOR REV", unit, self.position)
-            client.write_register(0x1803, setPosition, unit=unit)
-            client.write_register(0x7D, 0x8, unit=unit)
+            self.client.write_register(0x1803, setPosition, unit=unit)
+            self.client.write_register(0x7D, 0x8, unit=unit)
             rp = self.readDelay(setPosition)
             if unit > 20:
-                client.write_register(0x7D, 0x20, unit=unit)
-                client.write_register(0x7D, 0x0, unit=unit)
-                client.write_register(0x1801, 1, unit=unit)
-                client.write_register(0x1805, int(Speed[unit]), unit=unit)
-                client.write_register(0x1803, setPosition - 10, unit=unit)
-                client.write_register(0x7D, 0x8, unit=unit)
+                self.client.write_register(0x7D, 0x20, unit=unit)
+                self.client.write_register(0x7D, 0x0, unit=unit)
+                self.client.write_register(0x1801, 1, unit=unit)
+                self.client.write_register(0x1805, int(Speed[unit]), unit=unit)
+                self.client.write_register(0x1803, setPosition - 10, unit=unit)
+                self.client.write_register(0x7D, 0x8, unit=unit)
                 rp = self.readDelay(setPosition)
-                client.write_register(0x7D, 0x20, unit=unit)
-                client.write_register(0x7D, 0x0, unit=unit)
-                client.write_register(0x1801, 1, unit=unit)
-                client.write_register(0x1805, int(Speed[unit]), unit=unit)
-                client.write_register(0x1803, setPosition, unit=unit)
-                client.write_register(0x7D, 0x8, unit=unit)
+                self.client.write_register(0x7D, 0x20, unit=unit)
+                self.client.write_register(0x7D, 0x0, unit=unit)
+                self.client.write_register(0x1801, 1, unit=unit)
+                self.client.write_register(0x1805, int(Speed[unit]), unit=unit)
+                self.client.write_register(0x1803, setPosition, unit=unit)
+                self.client.write_register(0x7D, 0x8, unit=unit)
                 rp = self.readDelay(setPosition)
             #self.closeMotor(client)
             if rp == "None" or rp == "NoneType":
@@ -774,24 +805,6 @@ class InputControl:
         except Exception:
             return False
 
-
-    def outOfRange(self, unit, delta):
-        global tk, Location
-
-        msg = str(int(Location[unit]) + int(delta)) + " is Out of Range"
-        flag = 0
-        if int(Location[unit]) + int(delta) < Lower[unit]:
-            flag = 1
-            Location[unit] = Lower[unit]
-        if int(Location[unit]) + int(delta) > Upper[unit]:
-            flag = 2
-            Location[unit] = Upper[unit]
-        if flag > 0:
-            tk.Label(page[unit], font=20, foreground="#000000", text=msg).place(x=50, y=240, width=350, height=25)
-        else:
-            tk.Label(page[unit], font=20, foreground="#F0F0F0", text=msg).place(x=50, y=240, width=350, height=25)
-
-        return flag
 
     def setEntry(self, t, val):
         """
