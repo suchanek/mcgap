@@ -1,12 +1,12 @@
 # GAPMC configuration
 # tab 	key 	value 	label
-#1	tab	1	Slide
-1	mech	50	Mechelle
-1	wide	300	Wide Field
-1	slit	400	Slit Jaw
-1	eye	600	Eyepiece
-1	ccd	700	CCD Camera
-1	comp	1000	Comparisons
+#1	tab	100	Slide
+1	mech	500	Mechelle
+1	wide	3000	Wide Field
+1	slit	4000	Slit Jaw
+1	eye	6000	Eyepiece
+1	ccd	7000	CCD Camera
+1	comp	8000	Comparisons
 1	jog	-1	-1
 1	jog	-2	-2
 1	jog	-5	-5
@@ -20,10 +20,10 @@
 1	jog	20	+20
 1	jog	50	+50
 #2	tab	2	Comparisons
-2	neon	-3000	Neon Lamp
-2	flat	-2000	Flat Lamp
-2   fear	-1000	Iron-Argon
-2	hgvp	0000	Mercury Vapor
+2	neon	 200	Neon Lamp
+2	flat	 500	Flat Lamp
+2   fear	 700	Iron-Argon
+2	hgvp	 900	Mercury Vapor
 2	thrm	1000	Thorium
 2	jog	-1	-1
 2	jog	-5	-5
