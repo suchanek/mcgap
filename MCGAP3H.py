@@ -10,6 +10,7 @@ import serial
 import usb.core
 import sys
 import os
+import glob
 
 import os.path as path
 import pathlib
@@ -81,30 +82,59 @@ _ref = []
 _res = []
 
 import serial.tools.list_ports
+def serial_ports():
+    """ Lists serial port names
 
+        :raises EnvironmentError:
+            On unsupported or unknown platforms
+        :returns:
+            A list of the serial ports available on the system
+    """
+    if sys.platform.startswith('win'):
+        ports = ['COM%s' % (i + 1) for i in range(256)]
+    elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+        # this excludes your current terminal "/dev/tty"
+        ports = glob.glob('/dev/tty[A-Za-z]*')
+    elif sys.platform.startswith('darwin'):
+        ports = glob.glob('/dev/tty.*')
+    else:
+        raise EnvironmentError('Unsupported platform')
+
+    result = []
+    for port in ports:
+        try:
+            s = serial.Serial(port)
+            s.close()
+            result.append(port)
+        except (OSError, serial.SerialException):
+            pass
+    return result
+
+#ports = serial_ports()
 ports = list(serial.tools.list_ports.comports())
+print(ports)
+
 """
 for p,q,r in ports:
-    if "USB" in q:
-        continue
-    #com = int(filter(str.isdigit, p))
     com = filter(str.isdigit, p)
-    print("P",p,com)
+    print("P ",p,com)
 """
+
+for p,q,r in ports:
+    print("P ",p, "Q ", q, "R ", r)
+
 
 PATH = pathlib.Path(__file__).parent.joinpath("").resolve()
 CONFIG_FILENAME = "GAPMC.ozs"
 CONFIG_PATH = PATH.joinpath(CONFIG_FILENAME)
 CONFIG_POSIX = CONFIG_PATH.as_posix()
-#CONFIG_POSIX = path.basename(CONFIG_FILENAME)
 
 DFLT_FILENAME = "GAPMC.dft"
 DFLT_PATH = PATH.joinpath(DFLT_FILENAME)
 DFLT_POSIX = DFLT_PATH.as_posix()
-#DFLT_POSIX = path.basename(DFLT_FILENAME)
 
-print(CONFIG_POSIX)
-print(DFLT_POSIX)
+#print(CONFIG_POSIX)
+#print(DFLT_POSIX)
 
 def exit():
     """
@@ -231,15 +261,15 @@ class MotorControl:
         self.lower = lower
         self.upper = upper
         # make the correct object, don't try to connect
-        '''
+        """
         self.client = ModbusClient(method='rtu',
                               retries=1000,
-                              timeout=0.4,
+                              timeout=1,
                               rtscts=True,
                               parity='E',
                               baudrate=9600,
                               unit=self.unit)
-        '''
+        """ 
         self.client = 0
         self.target = 0 # targeted step location
         self.connected = False
@@ -275,22 +305,22 @@ class MotorControl:
         port = self.port
         unit = self.unit
 
-# ModbusClient(method='rtu', port='/dev/ttyUSB0', parity='N', baudrate=9600, bytesize=8, stopbits=2, timeout=1, strict=False)
+# ModbusClient(method='rtu', port='/dev/ttyUSB0', parity='N', baudrate=9600, 
+# bytesize=8, stopbits=2, timeout=1, strict=False)
+
         self.client = ModbusClient(method='rtu',
                             port=port,
-                            retries=1000,
-                            timeout=0.4,
+                            retries=10 ,
+                            timeout=1,
                             rtscts=True,
                             parity='E',
                             baudrate=9600,
                             strict=False,
                             stopbits=2,
                             unit=unit)
+
         print(".. connecting..")
         try:
-            # we should really use self.port for port here... -egs-
-            # but we need to set it by reading the actual COM port #
-            
             res = self.client.connect()
         except OSError as e:
             print("--- Can't Connect", unit)
@@ -323,12 +353,12 @@ class MotorControl:
         print("")
         print("jogMotor", unit, delta)
         print("CLIENT",unit,self.client)
-        if self.client and self.outOfRange(delta):
-            #print("JOG IS OUT OF RANGE RETURN")
+        if self.outOfRange(delta):
+            print("JOG IS OUT OF RANGE RETURN")
             return
         # we don't need try/except since we are not throwing exceptions!
-        if self.client:
-            cp = self.readMotor()
+        cp = self.readMotor()
+        if self.connectMotor():
             jogPosition = int(delta) + cp
             self.client.write_register(0x7D, 0x20, unit=unit)
             self.client.write_register(0x0383, 1, unit=unit)
@@ -357,7 +387,7 @@ class MotorControl:
                 self.client.write_register(0x1803, jogPosition, unit=unit)
                 self.client.write_register(0x7D, 0x8, unit=unit)
                 rp = self.readDelay(jogPosition)
-            #self.closeMotor(client)
+            self.closeMotor()
             #print("jog to",rp)
             log.debug(rp)
             if rp == "None" or rp == "NoneType":
@@ -399,17 +429,20 @@ class MotorControl:
             pos = self.position
             lower = self.lower
             upper = self.upper
+            print("lower ", lower, "Upper ", upper)
 
             print("POS:", pos)
             msg = str(pos + int(delta)) + " is Out of Range"
             flag = 0
+            newpos = pos + int(delta)
+            print("newpos ", newpos, " delta ", delta)
             if pos + int(delta) < lower:
                 flag = 1
 
             if pos + int(delta) > upper:
                 flag = 2
                 # potential side effect - why do this?
-                Location[unit] = Upper[unit]
+                Location[unit] = upper
             if flag > 0:
                 tk.Label(page[unit], font=20, foreground="#000000", text=msg).place(x=50, y=240, width=350, height=25)
             #else:
@@ -426,15 +459,13 @@ class MotorControl:
         global _mode
         unit = self.unit
 
-        client = self.client
-        if client:
-            read = client.read_holding_registers(0x0080, 1, unit=unit)
+        #client = self.client
+        if self.connectMotor():
+            read = self.client.read_holding_registers(0x0080, 1, unit=unit)
             upprpos = read.registers[0]
-            read = client.read_holding_registers(0x0081, 1, unit=unit)
-            #self.closeMotor(client)
-            #log.debug(read)
+            read = self.client.read_holding_registers(0x0081, 1, unit=unit)
             alarm = read.registers[0]
-            #self.closeMotor()
+            self.closeMotor()
         else:
             #_mode = 1
             return
@@ -511,7 +542,7 @@ class MotorControl:
             return 1000
 
         # log.debug("READING REGISTER ")
-        if self.client:
+        if self.connectMotor():
             read = self.client.read_holding_registers(0x00D7, 1, unit=unit)
             print(read)
             upprpos = read.registers[0]
@@ -519,7 +550,7 @@ class MotorControl:
             read = self.client.read_holding_registers(0x00C7, 1, unit=unit)
             log.debug(read)
             position = read.registers[0] 
-            #self.closeMotor(self.client)
+            self.closeMotor()
         else:
             warn()
             return
@@ -544,26 +575,26 @@ class MotorControl:
         Send the 'unit' motor to the target location.
         :return: motor position in user steps.
         """
-        location = self.target
+        target = self.target
         unit = self.unit
         speed = self.speed
-        print("")
-        print("sendMotor", unit, location)
+        print("sendMotor", unit, target)
 
         if TEST:
-            pos = 10000
+            pos = 1000
         else:
             pos = self.readMotor()
-        
-        delta = location - pos
-        # print("CLIENT",unit,self.client)
-        
-        if self.client and self.outOfRange(delta):
+
+        delta = target - pos
+        print("..Delta: ", delta)
+        if self.outOfRange(delta):
             print("SEND IS OUT OF RANGE RETURN")
             return
-        if self.client:
-            setPosition = int(location) 
+
+        if self.connectMotor():
+            setPosition = int(target) 
             print("SEND WRITE TRY ",unit," TO ",setPosition)
+            # what do the following write_register calls do? -egs-
             self.client.write_register(0x7D, 0x20, unit=unit)
             #self.client.write_register(0x7D, 0x0, unit=unit)
             self.client.write_register(0x1801, 1, unit=unit)
@@ -595,7 +626,7 @@ class MotorControl:
                 self.client.write_register(0x1803, setPosition, unit=unit)
                 self.client.write_register(0x7D, 0x8, unit=unit)
                 rp = self.readDelay(setPosition)
-            #self.closeMotor(client)
+            self.closeMotor()
             if rp == "None" or rp == "NoneType":
                 warn()
         else:
@@ -1695,10 +1726,11 @@ class MakeTab:
 Main loop, initialize.
 """
 #global variables
-
+"""
 # discover com port to RS485
 print("PORTS",ports)
 i = 0
+
 for p,q,r in ports:
     i += 1
     if r.find("FTDIBUS") >= 0:
@@ -1706,6 +1738,7 @@ for p,q,r in ports:
         port485=p
     else:
         print("MOTOR",i,"port",p)
+"""
 
 port485="COM6"
 
@@ -1721,10 +1754,12 @@ M1 = MotorControl(1, "com7", 100,   0, 1000,   3000, 0, 8000)
 M2 = MotorControl(2, "com8", 100,   0, 1000,      0, 0, 1000)
 M3 = MotorControl(3, "com9", 10000, 0, 100000, 1000, 0, 12500)
 M4 = MotorControl(4, "com3", 10000, 0, 100000, 1000, 0, 150000)
+
 M1.connectMotor()
 M2.connectMotor()
 M3.connectMotor()
 M4.connectMotor()
+
 if not TEST and not M1.connected and not M2.connected and not M3.connected and not M4.connected:
         warn()
 
