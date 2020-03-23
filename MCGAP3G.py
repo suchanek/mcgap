@@ -33,20 +33,17 @@ _mode = 0
 limitSet = "Show"
 # i don't know if this is right but DISABLE is used and wasn't defined globally
 DISABLE = 0
-TEST = 0
- 
-
+TEST = 1
 mflag = 0
-Resolution = [0,1000,1000,100000,100000]
+
 Reference = [0,0,0,0,0]
-Speed = [0, 100, 100, 10000, 10000]
 Location = [0, 0, 0, 0, 0] # array of current coordinates
-Upper = [0, 8000, 1000, 12500, 150000]
-Lower = [0, 0, 0, 0, 0]
-Offset = [0, 8000, 1000, 15000, 15000]
+
 Zero = [0, 3000, 0, 1000, 1000]
-Offset = [0, 0, 0, 0, 0]
-Zero = [0, 0, 0, 0, 0]
+Speed = [0, 100, 100, 10000, 10000]
+Resolution = [0,1000,1000,100000,100000]
+Upper = [0, 8000, 1000, 12500, 150000]
+Offset = [0, 8000, 1000, 15000, 15000]
 
 # Initialize arrays
 e = [0,0,0,0,0,0,0,0]
@@ -231,6 +228,7 @@ class MotorControl:
         self.zero = zero
         self.lower = lower
         self.upper = upper
+        # make the correct object, don't try to connect
         self.client = ModbusClient(method='rtu',
                               retries=1000,
                               timeout=0.4,
@@ -240,7 +238,7 @@ class MotorControl:
                               unit=self.unit)
         self.target = 0 # targeted step location
         self.connected = False
-        print("Client:", self.client)
+        #print("Client:", self.client)
 
     def closeMotor(self):
         """
@@ -286,7 +284,7 @@ class MotorControl:
         except:
             res = 0
 
-        if TEST and self.unit != 0:
+        if TEST:
             res = 1
             self.connected = True
             return True
@@ -298,7 +296,6 @@ class MotorControl:
             self.connected = False
             return False
 
-
     def jogMotor(self, delta):
         """
 		Adjust motor position by delta.
@@ -308,7 +305,8 @@ class MotorControl:
 		"""
         global tk
         unit = self.unit
-        #client = self.client
+        speed = self.speed
+
         print("")
         print("jogMotor", unit, delta)
         print("CLIENT",unit,self.client)
@@ -321,7 +319,7 @@ class MotorControl:
             jogPosition = int(delta) + cp
             self.client.write_register(0x7D, 0x20, unit=unit)
             self.client.write_register(0x0383, 1, unit=unit)
-            self.client.write_register(0x1805, int(Speed[unit]), unit=unit)
+            self.client.write_register(0x1805, speed, unit=unit)
             if int(delta) > 0:
                 self.client.write_register(0x7D, 0x1000, unit=unit)
                 print("JOG MOTOR FWD",unit,"FROM",cp,"TO",jogPosition,"BY",int(delta))
@@ -335,14 +333,14 @@ class MotorControl:
                 self.client.write_register(0x7D, 0x8, unit=unit)
                 self.client.write_register(0x7D, 0x20, unit=unit)
                 self.client.write_register(0x7D, 0x0, unit=unit)
-                self.client.write_register(0x1805, int(Speed[unit]), unit=unit)
+                self.client.write_register(0x1805, speed, unit=unit)
                 self.client.write_register(0x1803, jogPosition - 10, unit=unit)
                 self.client.write_register(0x7D, 0x8, unit=unit)
                 rp = self.readDelay(jogPosition)
                 self.client.write_register(0x7D, 0x8, unit=unit)
                 self.client.write_register(0x7D, 0x20, unit=unit)
                 self.client.write_register(0x7D, 0x0, unit=unit)
-                self.client.write_register(0x1805, int(Speed[unit]), unit=unit)
+                self.client.write_register(0x1805, speed, unit=unit)
                 self.client.write_register(0x1803, jogPosition, unit=unit)
                 self.client.write_register(0x7D, 0x8, unit=unit)
                 rp = self.readDelay(jogPosition)
@@ -383,21 +381,22 @@ class MotorControl:
         #print("")
 
     def outOfRange(self, delta):
-            global tk, Location
-
+            global tk
             unit = self.unit
             pos = self.position
+            lower = self.lower
+            upper = self.upper
+
             print("POS:", pos)
             msg = str(pos + int(delta)) + " is Out of Range"
             flag = 0
-            if pos + int(delta) < Lower[unit]:
+            if pos + delta < lower:
                 flag = 1
-                # potential side effect - why do this?
-                # Location[unit] = Lower[unit]
-            if pos + int(delta) > Upper[unit]:
+
+            if pos + int(delta) > upper:
                 flag = 2
                 # potential side effect - why do this?
-                # Location[unit] = Upper[unit]
+                Location[unit] = Upper[unit]
             if flag > 0:
                 tk.Label(page[unit], font=20, foreground="#000000", text=msg).place(x=50, y=240, width=350, height=25)
             #else:
@@ -442,18 +441,20 @@ class MotorControl:
         global tk
         unit = self.unit
         client = self.client
+        speed = self.speed
 
         read = client.read_holding_registers(0x00C7, 1, unit=unit)
         rp = read.registers[0]
         print("readDelay IN",target,"pos",rp)
-        delay = (abs(rp - target)) * 1.2 / Speed[unit]
+        delay = (abs(rp - target)) * 1.2 / speed
         ldelay = delay
         #msg = "Wait " + str(int(10.0 * delay) / 10.0) + " sec"
         #tk.Label(page[unit], font=20, foreground="#000000", text=msg).place(x=50, y=240, width=350, height=25)
         reps = 0
+        speed = self.speed
         while (rp != target):
             reps += 1
-            delay = (abs(rp - target))*1.2/Speed[unit]
+            delay = (abs(rp - target))*1.2/speed
             if ldelay < delay:
                 print("Motor going in wrong direction")
                 self.client.write_register(0x7D, 0x20, unit=unit)
@@ -469,7 +470,7 @@ class MotorControl:
                 break
             msg = "Wait " + str(int(10.0*delay)/10.0) + " sec"
             #tk.Label(page[unit], font=20, foreground="#000000", text=msg).place(x=50, y=240, width=350, height=25)
-            print("WAIT",delay,"sec to goto",target,"from",rp,"at",Speed[unit])
+            print("WAIT",delay,"sec to goto",target,"from",rp,"at", speed)
             ldelay = delay
             sleep(delay)
             read = client.read_holding_registers(0x00C7, 1, unit=unit)
@@ -532,16 +533,18 @@ class MotorControl:
         """
         location = self.target
         unit = self.unit
+        speed = self.speed
         print("")
         print("sendMotor", unit, location)
 
         if TEST:
-            pos = 1000
+            pos = 10000
         else:
             pos = self.readMotor()
         
         delta = location - pos
-        print("CLIENT",unit,self.client)
+        # print("CLIENT",unit,self.client)
+        
         if self.client and self.outOfRange(delta):
             print("SEND IS OUT OF RANGE RETURN")
             return
@@ -552,7 +555,7 @@ class MotorControl:
             #self.client.write_register(0x7D, 0x0, unit=unit)
             self.client.write_register(0x1801, 1, unit=unit)
             self.client.write_register(0x0383, 1, unit=unit)
-            self.client.write_register(0x1805, int(Speed[unit]), unit=unit)
+            self.client.write_register(0x1805, speed, unit=unit)
             if int(delta) > 0:
                 #self.client.write_register(0x7D, 0x4000, unit=unit)
                 #self.client.write_register(0x7D, 0x0, unit=unit)
@@ -568,14 +571,14 @@ class MotorControl:
                 self.client.write_register(0x7D, 0x20, unit=unit)
                 self.client.write_register(0x7D, 0x0, unit=unit)
                 self.client.write_register(0x1801, 1, unit=unit)
-                self.client.write_register(0x1805, int(Speed[unit]), unit=unit)
+                self.client.write_register(0x1805, speed, unit=unit)
                 self.client.write_register(0x1803, setPosition - 10, unit=unit)
                 self.client.write_register(0x7D, 0x8, unit=unit)
                 rp = self.readDelay(setPosition)
                 self.client.write_register(0x7D, 0x20, unit=unit)
                 self.client.write_register(0x7D, 0x0, unit=unit)
                 self.client.write_register(0x1801, 1, unit=unit)
-                self.client.write_register(0x1805, int(Speed[unit]), unit=unit)
+                self.client.write_register(0x1805, speed, unit=unit)
                 self.client.write_register(0x1803, setPosition, unit=unit)
                 self.client.write_register(0x7D, 0x8, unit=unit)
                 rp = self.readDelay(setPosition)
@@ -663,8 +666,6 @@ class InputControl:
         :param y: Entry box y position
         :return: True/False
         """
-        global Location
-
         val = str(var.get())
 
         #print("CALLBACK",t,val)
@@ -680,8 +681,8 @@ class InputControl:
             except:
                 return False
 
-        if int(val) < Lower[t]:
-            val = str(Lower[t])
+        if int(val) < 0:
+            val = "0"
         if int(val) > Upper[t]:
             val = str(Upper[t])
         var.set(val)
@@ -1240,10 +1241,10 @@ class LocalIO:
         l[2] = tk.Entry(page[0], width=8, justify=RIGHT, borderwidth=2)
         l[3] = tk.Entry(page[0], width=8, justify=RIGHT, borderwidth=2)
         l[4] = tk.Entry(page[0], width=8, justify=RIGHT, borderwidth=2)
-        l[1].insert(0, Lower[1])
-        l[2].insert(0, Lower[2])
-        l[3].insert(0, Lower[3])
-        l[4].insert(0, Lower[4])
+        l[1].insert(0, 0)
+        l[2].insert(0, 0)
+        l[3].insert(0, 0)
+        l[4].insert(0, 0)
         l[1].grid(row=4, column=9)
         l[2].grid(row=5, column=9)
         l[3].grid(row=6, column=9)
@@ -1700,13 +1701,13 @@ Motor check.
 """
 F = LocalIO()
 F.readConfig()
-#    def __init__(self, unit, port, speed, position, resolution, zero, lower, upper):
 
-M1 = MotorControl(1, "com7", Speed[1], 0, 1, Zero[1], 0, 8000)
-M2 = MotorControl(2, "com8", Speed[2], 0, 1, Zero[2], 0, 1000)
-M3 = MotorControl(3, "com9", Speed[3], 0, 100, Zero[3], 0, 12500)
-M4 = MotorControl(4, "com3", Speed[4], 0, 100, Zero[4], 0, 12500)
 
+# do full initialization of the object. no global vars.
+M1 = MotorControl(1, "com7", 100,   0, 1000,   3000, 0, 8000)
+M2 = MotorControl(2, "com8", 100,   0, 1000,      0, 0, 1000)
+M3 = MotorControl(3, "com9", 10000, 0, 100000, 1000, 0, 12500)
+M4 = MotorControl(4, "com3", 10000, 0, 100000, 1000, 0, 150000)
 M1.connectMotor()
 M2.connectMotor()
 M3.connectMotor()
