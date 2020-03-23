@@ -651,16 +651,16 @@ class InputControl:
         """
         global Location
 
-        val = str(var.get())
+        val1 = str(var.get())
 
         #print("CALLBACK",t,val)
         try:
-            int(val)
+            val = int(val1)
         except:
             filter_char = lambda char: char.isdigit()
-            val = filter(filter_char, val)
-            if val.find("-") > 0:
-                val = val.replace("-","")
+            #val = filter(filter_char, val1)
+            #if val.find("-") > 0:
+            #    val = val.replace("-","")
             try:
                 int(val)
             except:

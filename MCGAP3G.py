@@ -35,12 +35,12 @@ limitSet = "Show"
 DISABLE = 0
 TEST = 0
  
- 
+
 mflag = 0
 Resolution = [0,1000,1000,100000,100000]
 Reference = [0,0,0,0,0]
 Speed = [0, 100, 100, 10000, 10000]
-Location = [0, 0, 0, 0, 0]; # array of current coordinates
+Location = [0, 0, 0, 0, 0] # array of current coordinates
 Upper = [0, 8000, 1000, 12500, 150000]
 Lower = [0, 0, 0, 0, 0]
 Offset = [0, 8000, 1000, 15000, 15000]
@@ -141,13 +141,11 @@ def menu():
 def message(unit, mflag, msg):
     if mflag == 1:
         print(unit,"MESSAGE:",msg,">",page[unit],"<")
-        l = tk.Label(main, font=20, foreground="#000000", text=msg).place(x=100, y=240, width=350, height=25)
-        # Gary - this returns an error when run...
-        #l.pack()
+        tk.Label(main, font=20, foreground="#000000", text=msg).place(x=100, y=40, width=350, height=25)
         mflag = 0
     else:
         print(unit,"BLANK MESSAGE")
-        tk.Label(page[unit], font=20, foreground="#F0F0F0", text=msg).place(x=100, y=240, width=350, height=25)
+        tk.Label(page[unit], font=20, foreground="#F0F0F0", text=msg).place(x=100, y=40, width=350, height=25)
 
 
 def warn():
@@ -272,7 +270,7 @@ class MotorControl:
             # we should really use self.port for port here... -egs-
             # but we need to set it by reading the actual COM port #
             self.client = ModbusClient(method='rtu',
-                              port=port485,
+                              port=port,
                               retries=1000,
                               timeout=0.4,
                               rtscts=True,
@@ -344,11 +342,11 @@ class MotorControl:
                 client.write_register(0x1803, jogPosition, unit=unit)
                 client.write_register(0x7D, 0x8, unit=unit)
                 rp = self.readDelay(jogPosition)
-            self.closeMotor(client)
+            #self.closeMotor(client)
             #print("jog to",rp)
             log.debug(rp)
             if rp == "None" or rp == "NoneType":
-                warn(unit, 292)
+                warn()
         else:
             rp = self.target
             jogPosition = int(delta) + rp
@@ -394,10 +392,10 @@ class MotorControl:
             read = client.read_holding_registers(0x0080, 1, unit=unit)
             upprpos = read.registers[0]
             read = client.read_holding_registers(0x0081, 1, unit=unit)
-            self.closeMotor(client)
+            #self.closeMotor(client)
             #log.debug(read)
             alarm = read.registers[0]
-            self.closeMotor()
+            #self.closeMotor()
         else:
             #_mode = 1
             return
@@ -474,14 +472,15 @@ class MotorControl:
         # log.debug("READING REGISTER ")
         if self.client:
             read = self.client.read_holding_registers(0x00D7, 1, unit=unit)
+            print(read)
             upprpos = read.registers[0]
             print("READ MOTOR", unit, "LOC", position, "POS", self.position)
             read = self.client.read_holding_registers(0x00C7, 1, unit=unit)
             log.debug(read)
             position = read.registers[0] 
-            self.closeMotor(self.client)
+            #self.closeMotor(self.client)
         else:
-            warn(unit, 434)
+            warn()
             return
 
         self.position = position
@@ -549,9 +548,9 @@ class MotorControl:
                 client.write_register(0x1803, setPosition, unit=unit)
                 client.write_register(0x7D, 0x8, unit=unit)
                 rp = self.readDelay(setPosition)
-            self.closeMotor(client)
+            #self.closeMotor(client)
             if rp == "None" or rp == "NoneType":
-                warn(unit, 494)
+                warn()
         else:
             rp = self.target
             mflag = 1
@@ -571,7 +570,7 @@ class MotorControl:
         I.setEntry(unit, rp)
         T.setLabel(unit, rp)
         Location[unit] = rp
-        position = rp
+        self.position = rp
         #print("WRITE",unit,position,"SPD",Speed[unit])
 
     # this really doesn't move the motor - it only sets its internal location
@@ -850,7 +849,6 @@ class LocalIO:
 
         for record in records:
             line = record.split()
-            count = len(line)
             if line[1] == 'jog':
                 if line[0] == str(1):
                     jog1.append(line)
@@ -942,6 +940,7 @@ class LocalIO:
         # item1, item2, item3, item4 = 0
         global tab1, tab2, tab3, tab4
         global tmp1, tmp2, tmp3, tmp4
+        global pos1, pos2, pos3, pos4
 
         # read whole file
         fileHandle = open(filename, "r")
@@ -1107,10 +1106,10 @@ class LocalIO:
         hdr3 = "\t 3 \t Grating_1 \t"
         hdr4 = "\t 4 \t Grating_2 \t"
         hdr5 = "\toffset \tzero \tspeed \n"
-        str1 = I.convertL2S(o[1].get()) + "\t" + I.convertL2S(z[1].get()) + "\t" + I.convertL2S(s[1].get()) + "\n"
-        str2 = I.convertL2S(o[2].get()) + "\t" + I.convertL2S(z[2].get()) + "\t" + I.convertL2S(s[2].get()) + "\n"
-        str3 = I.convertL2S(o[3].get()) + "\t" + I.convertL2S(z[3].get()) + "\t" + I.convertL2S(s[3].get()) + "\n"
-        str4 = I.convertL2S(o[4].get()) + "\t" + I.convertL2S(z[4].get()) + "\t" + I.convertL2S(s[4].get()) + "\n"
+        str1 = I.convertL2S(o[1]) + "\t" + I.convertL2S(z[1]) + "\t" + I.convertL2S(s[1]) + "\n"
+        str2 = I.convertL2S(o[2]) + "\t" + I.convertL2S(z[2]) + "\t" + I.convertL2S(s[2]) + "\n"
+        str3 = I.convertL2S(o[3]) + "\t" + I.convertL2S(z[3]) + "\t" + I.convertL2S(s[3]) + "\n"
+        str4 = I.convertL2S(o[4]) + "\t" + I.convertL2S(z[4]) + "\t" + I.convertL2S(s[4]) + "\n"
 
         # build file
         records = []
@@ -1152,7 +1151,7 @@ class LocalIO:
         conf = tk.Tk()
         conf.wm_title('Settings')
         page[0] = Canvas(conf, width=850, height=280)
-        page[0].grid()
+        #page[0].grid()
         page[0].rowconfigure(0, {'minsize' : 20})
         page[0].rowconfigure(3, {'minsize' : 20})
         page[0].rowconfigure(8, {'minsize' : 20})
@@ -1369,7 +1368,7 @@ class TabControl:
 
         :return: None
         """
-        #global pos1, pos2, pos3, pos4
+        global pos1, pos2, pos3, pos4
         pos1 = tab1
         pos2 = tab2
         pos3 = tab3
@@ -1411,6 +1410,7 @@ class TabControl:
         :param unit:
         :return:
         """
+        global pos1, pos2, pos3, pos4
 
         for unit in range(1,5):
             if (unit == 1):
@@ -1680,6 +1680,7 @@ for p,q,r in ports:
     else:
         print("MOTOR",i,"port",p)
 
+port485="COM6"
 
 """
 Motor check.
@@ -1687,10 +1688,12 @@ Motor check.
 F = LocalIO()
 F.readConfig()
 #    def __init__(self, unit, port, speed, position, resolution, zero, lower, upper):
-M1 = MotorControl(1, 1, Speed[1], 0, 1, Zero[1], 0, 8000)
-M2 = MotorControl(2, 2, Speed[2], 0, 1, Zero[2], 0, 1000)
-M3 = MotorControl(3, 3, Speed[3], 0, 100, Zero[3], 0, 12500)
-M4 = MotorControl(4, 4, Speed[4], 0, 100, Zero[4], 0, 12500)
+
+M1 = MotorControl(1, "com7", Speed[1], 0, 1, Zero[1], 0, 8000)
+M2 = MotorControl(2, "com8", Speed[2], 0, 1, Zero[2], 0, 1000)
+M3 = MotorControl(3, "com9", Speed[3], 0, 100, Zero[3], 0, 12500)
+M4 = MotorControl(4, "com3", Speed[4], 0, 100, Zero[4], 0, 12500)
+
 M1.connectMotor()
 M2.connectMotor()
 M3.connectMotor()
