@@ -1,3 +1,4 @@
 {
-    "python.pythonPath": "/Users/suchanek/anaconda3/envs/mcgap/bin/python"
+    "python.pythonPath": "/Users/suchanek/anaconda3/envs/mcgap/bin/python",
+    "python.linting.enabled": true
 }
