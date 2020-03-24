@@ -141,7 +141,7 @@ def message(unit, mflag, msg):
     else:
         if DBG:
             print(unit,"BLANK MESSAGE")
-        tk.Label(page[unit], font=20, foreground="D0D0D0", text=msg).place(x=100, y=40, width=350, height=25)
+        tk.Label(page[unit], font=20, foreground="C0C0C0", text=msg).place(x=100, y=40, width=350, height=25)
 
 
 def warn():
@@ -422,7 +422,7 @@ class MotorControl:
             if flag > 0:
                 tk.Label(page[unit], font=20, foreground="#000000", text=msg).place(x=50, y=240, width=350, height=25)
             #else:
-            #    tk.Label(page[unit], font=20, foreground="D0D0D0", text=msg).place(x=50, y=240, width=350, height=25)
+            #    tk.Label(page[unit], font=20, foreground="C0C0C0", text=msg).place(x=50, y=240, width=350, height=25)
 
             return flag
     
@@ -505,8 +505,10 @@ class MotorControl:
             print("readDelay IN",target,"pos",rp)
         delay = (abs(rp - target)) * 1.2 / speed
         ldelay = delay
-        #msg = "Wait " + str(int(10.0 * delay) / 10.0) + " sec"
-        #tk.Label(page[unit], font=20, foreground="#000000", text=msg).place(x=50, y=240, width=350, height=25)
+        
+        msg = "Wait " + str(int(10.0 * delay) / 10.0) + " sec"
+        tk.Label(page[unit], font=20, foreground="#FF0000", text=msg).place(x=90, y=20, width=350, height=25)
+        
         reps = 0
         speed = self.speed
         while (rp != target):
@@ -522,15 +524,19 @@ class MotorControl:
                 if DBG:
                     print("Motor not going from",rp,"to",target)
                 break
-            msg = "Wait " + str(int(10.0*delay)/10.0) + " sec"
-            #tk.Label(page[unit], font=20, foreground="#000000", text=msg).place(x=50, y=240, width=350, height=25)
+            
             if DBG:
                 print("WAIT",delay,"sec to goto",target,"from",rp,"at", speed)
+ 
             ldelay = delay
+            # set a busy cursor
+            main.config(cursor="wait")
+            main.update()
             sleep(delay)
             read = client.read_holding_registers(0x00C7, 1, unit=unit)
             rp = read.registers[0]
-            #tk.Label(page[unit], font=20, foreground="D0D0D0", text=msg).place(x=50, y=240, width=350, height=25)
+            main.config(cursor="")
+            tk.Label(page[unit], font=20, foreground="#F0F0F0", text=msg).place(x=90, y=20, width=350, height=25)
             #e1 = tk.Label(page[unit], font=12, bg="#FFFFFF", text="WAIT", justify='right')
         if DBG:
             print("readDelay OUT",rp)
@@ -1292,7 +1298,7 @@ class LocalIO:
         # if s[1] > 5000:
         #     s[1] = 5000
         #     msg = "Speed limit is 5000"
-        #     tk.Label(conf, font=20, foreground="D0D0D0", text=msg).place(x=100, y=240, width=350, height=25)
+        #     tk.Label(conf, font=20, foreground="C0C0C0", text=msg).place(x=100, y=240, width=350, height=25)
         s[2] = tk.Entry(page[0], width=8, justify=RIGHT, borderwidth=2)
         s[3] = tk.Entry(page[0], width=8, justify=RIGHT, borderwidth=2)
         s[4] = tk.Entry(page[0], width=8, justify=RIGHT, borderwidth=2)
@@ -1416,7 +1422,7 @@ class TabControl:
             tk.Label(page[unit], font=20, foreground="#EE0000", text=message).place(x=50, y=240, width=450, height=25)
             _warn1 = message
         elif unit < 3:
-            tk.Label(page[unit], font=20, foreground="#D0D0D0", text=_warn1).place(x=50, y=240, width=450, height=25)
+            tk.Label(page[unit], font=20, foreground="#C0C0C0", text=_warn1).place(x=50, y=240, width=450, height=25)
             _warn = ""
         return closest
 
