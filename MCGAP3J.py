@@ -90,7 +90,8 @@ for p,q,r in ports:
         continue
     #com = int(filter(str.isdigit, p))
     com = filter(str.isdigit, p)
-    print("P",p,com)
+    if DBG:
+      print("P",p,com)
 """
 
 PATH = pathlib.Path(__file__).parent.joinpath("").resolve()
@@ -100,10 +101,8 @@ CONFIG_POSIX = CONFIG_PATH.as_posix()
 
 DFLT_FILENAME = "GAPMC.dft"
 DFLT_PATH = PATH.joinpath(DFLT_FILENAME)
-DFLT_POSIX = DFLT_PATH.as_posix()
+DFLT_POSIX = DFLT_PATH.as_posiix()
 
-print(CONFIG_POSIX)
-print(DFLT_POSIX)
 
 def exit():
     """
@@ -135,11 +134,13 @@ def menu():
 
 def message(unit, mflag, msg):
     if mflag == 1:
-        print(unit,"MESSAGE:",msg,">",page[unit],"<")
+        if DBG:
+            print(unit,"MESSAGE:",msg,">",page[unit],"<")
         tk.Label(main, font=20, foreground="#000000", text=msg).place(x=100, y=40, width=350, height=25)
         mflag = 0
     else:
-        print(unit,"BLANK MESSAGE")
+        if DBG:
+            print(unit,"BLANK MESSAGE")
         tk.Label(page[unit], font=20, foreground="#F0F0F0", text=msg).place(x=100, y=40, width=350, height=25)
 
 
@@ -233,7 +234,8 @@ class MotorControl:
         self.client = 0
         self.target = 0 # targeted step location
         self.connected = False
-        #print("Client:", self.client)
+        if DBG:
+            print("Client:", self.client)
 
     def closeMotor(self):
         """
@@ -245,9 +247,11 @@ class MotorControl:
 		"""
         try:
             self.client.close()
-            print("CLOSE succeeded")
+            if DBG:
+                print("CLOSE succeeded")
         except:
-            print("Can't close - null client!")
+            if DBG:
+                print("Can't close - null client!")
         return
 
     def connectMotor(self):
@@ -259,7 +263,8 @@ class MotorControl:
 		:return client:
 		"""
         if self.connected:
-            print("-- Already Connected?")
+            if DBG:
+                print("-- Already Connected?")
             return True
         # we should really use the
         port = self.port
@@ -275,14 +280,16 @@ class MotorControl:
                             strict=False,
                             stopbits=2,
                             unit=unit)
-        print(".. connecting..")
+        if DBG:
+            print(".. connecting..")
         try:
             # we should really use self.port for port here... -egs-
             # but we need to set it by reading the actual COM port #
             
             res = self.client.connect()
         except OSError as e:
-            print("--- Can't Connect", unit)
+            if DBG:
+                print("--- Can't Connect", unit)
             res = 0
 
         if TEST:
@@ -292,7 +299,8 @@ class MotorControl:
 
         if res:
             self.connected = True
-            print("--- Connected ", unit)
+            if DBG:
+                print("--- Connected ", unit)
             return True
         else:
             self.connected = False
@@ -309,12 +317,14 @@ class MotorControl:
         unit = self.unit
         speed = self.speed
 
-        print("")
-        print("jogMotor", unit, delta)
-        print("CLIENT",unit,self.client)
+        if DBG:
+            print("jogMotor", unit, delta)
+        if DBG:
+            print("CLIENT",unit,self.client)
         self.connectMotor()
         if self.client and self.outOfRange(delta):
-            #print("JOG IS OUT OF RANGE RETURN")
+            if DBG:
+                print("JOG IS OUT OF RANGE RETURN")
             self.closeMotor()
             return
         # we don't need try/except since we are not throwing exceptions!
@@ -326,10 +336,12 @@ class MotorControl:
             self.client.write_register(0x1805, speed, unit=unit)
             if int(delta) > 0:
                 self.client.write_register(0x7D, 0x1000, unit=unit)
-                print("JOG MOTOR FWD",unit,"FROM",cp,"TO",jogPosition,"BY",int(delta))
+                if DBG:
+                    print("JOG MOTOR FWD",unit,"FROM",cp,"TO",jogPosition,"BY",int(delta))
             if int(delta) < 0:
                 self.client.write_register(0x7D, 0x2000, unit=unit)
-                print("JOG MOTOR REV",unit,"FROM",cp,"TO",jogPosition,"BY",int(delta))
+                if DBG:
+                    print("JOG MOTOR REV",unit,"FROM",cp,"TO",jogPosition,"BY",int(delta))
             self.client.write_register(0x1803, jogPosition, unit=unit)
             self.client.write_register(0x7D, 0x8, unit=unit)
             rp = self.readDelay(jogPosition) 
@@ -349,7 +361,8 @@ class MotorControl:
                 self.client.write_register(0x7D, 0x8, unit=unit)
                 rp = self.readDelay(jogPosition)
             self.closeMotor()
-            #print("jog to",rp)
+            if DBG:
+                print("jog to",rp)
             log.debug(rp)
             if rp == "None" or rp == "NoneType":
                 warn()
@@ -358,7 +371,8 @@ class MotorControl:
             jogPosition = int(delta) + rp
             mflag = 1
             msg = "Motor " + str(unit) +" is not available"
-            print("HERE???")
+            if DBG:
+                print("HERE???")
             message(unit,mflag,msg)
 
         if unit == 1:
@@ -379,11 +393,11 @@ class MotorControl:
         T.setLabel(unit, rp)
 
         self.position = rp
-        print("JogHERE",unit,jogPosition,"=",rp)
+        if DBG:
+            print("JogHERE",unit,jogPosition,"=",rp)
         if jogPosition != rp and client:
-            print("?????????????????????????????????????????????????????????????????????",jogPosition,rp)
-            #self.client.write_register(903, 0, unit=unit)
-        #print("")
+            if DBG:
+                print("???????",jogPosition,rp)
 
     def outOfRange(self, delta):
             global tk
@@ -392,7 +406,8 @@ class MotorControl:
             lower = self.lower
             upper = self.upper
 
-            print("POS:", pos)
+            if DBG:
+                print("POS:", pos)
             msg = str(pos + int(delta)) + " is Out of Range"
             flag = 0
             if pos + int(delta) < lower:
@@ -432,7 +447,8 @@ class MotorControl:
             #_mode = 1
             return
 
-        #print("Motor",unit,"ALARM",alarm)
+        if DBG:
+            print("Motor",unit,"ALARM",alarm)
         return alarm
 
     def readDelay(self, target):
@@ -451,7 +467,8 @@ class MotorControl:
 
         read = client.read_holding_registers(0x00C7, 1, unit=unit)
         rp = read.registers[0]
-        print("readDelay IN",target,"pos",rp)
+        if DBG:
+            print("readDelay IN",target,"pos",rp)
         delay = (abs(rp - target)) * 1.2 / speed
         ldelay = delay
         #msg = "Wait " + str(int(10.0 * delay) / 10.0) + " sec"
@@ -462,28 +479,27 @@ class MotorControl:
             reps += 1
             delay = (abs(rp - target))*1.2/speed
             if ldelay < delay:
-                print("Motor going in wrong direction")
+                if DBG:
+                    print("Motor going in wrong direction")
                 self.client.write_register(0x7D, 0x20, unit=unit)
                 self.client.write_register(0x7D, 0x0, unit=unit)
-                #self.client.write_register(0x7D, 0x2, unit=unit)
-                #self.client.write_register(0x0387, 0, unit=unit)
-                #self.client.write_register(0x7D, 0x8, unit=unit)
                 break
             if ldelay == delay and reps == 5:
-                print("Motor not going from",rp,"to",target)
-                #self.client.write_register(0x0E01, 0, unit=unit)
-                #self.client.write_register(0x0387, 0, unit=unit)
+                if DBG:
+                    print("Motor not going from",rp,"to",target)
                 break
             msg = "Wait " + str(int(10.0*delay)/10.0) + " sec"
             #tk.Label(page[unit], font=20, foreground="#000000", text=msg).place(x=50, y=240, width=350, height=25)
-            print("WAIT",delay,"sec to goto",target,"from",rp,"at", speed)
+            if DBG:
+                print("WAIT",delay,"sec to goto",target,"from",rp,"at", speed)
             ldelay = delay
             sleep(delay)
             read = client.read_holding_registers(0x00C7, 1, unit=unit)
             rp = read.registers[0]
             #tk.Label(page[unit], font=20, foreground="#F0F0F0", text=msg).place(x=50, y=240, width=350, height=25)
             #e1 = tk.Label(page[unit], font=12, bg="#FFFFFF", text="WAIT", justify='right')
-        print("readDelay OUT",rp)
+        if DBG:
+            print("readDelay OUT",rp)
         self.position = rp
         return rp
 
@@ -507,9 +523,11 @@ class MotorControl:
         self.connectMotor()
         if self.client:
             read = self.client.read_holding_registers(0x00D7, 1, unit=unit)
-            print(read)
+            if DBG:
+                print(read)
             upprpos = read.registers[0]
-            print("READ MOTOR", unit, "LOC", position, "POS", self.position)
+            if DBG:
+                print("READ MOTOR", unit, "LOC", position, "POS", self.position)
             read = self.client.read_holding_registers(0x00C7, 1, unit=unit)
             log.debug(read)
             position = read.registers[0] 
@@ -531,7 +549,8 @@ class MotorControl:
         location = T.getLabel(self.unit)
         self.target = location
         self.sendMotor()
-        print("GOT LOCATION",location)
+        if DBG:
+            print("GOT LOCATION",location)
 
     def sendMotor(self):
         """
@@ -541,7 +560,8 @@ class MotorControl:
         location = self.target
         unit = self.unit
         speed = self.speed
-        print("sendMotor", unit, location)
+        if DBG:
+            print("sendMotor", unit, location)
 
         if TEST:
             pos = 10000
@@ -552,20 +572,24 @@ class MotorControl:
         self.connectMotor()
       
         if self.client and self.outOfRange(delta):
-            print("SEND IS OUT OF RANGE RETURN")
+            if DBG:
+                print("SEND IS OUT OF RANGE RETURN")
             self.closeMotor()
             return
 
         if self.client:
             setPosition = int(location) 
-            print("SEND WRITE TRY ",unit," TO ",setPosition)
+            if DBG:
+                print("SEND WRITE TRY ",unit," TO ",setPosition)
             self.client.write_register(0x7D, 0x20, unit=unit)
             self.client.write_register(0x1801, 1, unit=unit)
             self.client.write_register(0x0383, 1, unit=unit)
             self.client.write_register(0x1805, speed, unit=unit)
             if int(delta) > 0:
+            if DBG:
                 print("SEND MOTOR FWD", unit, self.position)
             if int(delta) < 0:
+            if DBG:
                 print("SEND MOTOR REV", unit, self.position)
             self.client.write_register(0x1803, setPosition, unit=unit)
             self.client.write_register(0x7D, 0x8, unit=unit)
@@ -592,7 +616,8 @@ class MotorControl:
             rp = self.target
             mflag = 1
             msg = "Motor " + str(unit) +" is not available"
-            print("THERE??")
+            if DBG:
+                print("THERE??")
             message(unit,mflag,msg)
 
         if unit == 1:
@@ -609,7 +634,8 @@ class MotorControl:
         T.setLabel(unit, rp)
        
         self.position = rp
-        #print("WRITE",unit,position,"SPD",Speed[unit])
+        if DBG:
+            print("WRITE",unit,position,"SPD",Speed[unit])
 
     # this really doesn't move the motor - it only sets its internal location
     def setMotor(self, tab):
@@ -630,7 +656,8 @@ class MotorControl:
             location = [int(i[2]) for i in tab4][grate2.get()]
         self.target = location
 
-        print("SET MOTOR TARGET",unit,location,tab,source.get(),slide.get())
+        if DBG:
+            print("SET MOTOR TARGET",unit,location,tab,source.get(),slide.get())
         # TODO: error trapping here
         self.sendMotor()
     
@@ -674,6 +701,7 @@ class InputControl:
 
         if not val:
             return
+  
         if DBG:
             print("CALLBACK",t,val)
         try:
@@ -818,7 +846,8 @@ class InputControl:
         global e
 
         val = str(int(val))
-        print("SETENTRY target location", t, "VAL", val)
+        if DBG:
+            print("SETENTRY target location", t, "VAL", val)
 
         if t < 3:
             strv = tk.StringVar()
@@ -901,7 +930,8 @@ class LocalIO:
         tmp3 = copy.deepcopy(tab3)
         tmp4 = copy.deepcopy(tab4)
 
-        # #print(filename)
+        if DBG:
+            print(filename)
         main.title('GAP Motor Control: using ' + str(filename))
         main.title('DEFAULT settings: ' + str(filename))
         main.config()
@@ -1013,11 +1043,13 @@ class LocalIO:
         tab2 = copy.deepcopy(tmp2)
         tab3 = copy.deepcopy(tmp3)
         tab4 = copy.deepcopy(tmp4)
-        print("USER ",tab2)
+        if DBG:
+            print("USER ",tab2)
         filename = path.basename(filename)
         main.title('GAP Motor Control: using ' + str(filename))
         main.title('USER settings: ' + str(filename))
-        print(filename)
+        if DBG:
+            print(filename)
         #update()
 
     def saveUser(self):
@@ -1145,7 +1177,8 @@ class LocalIO:
         fileHandle.writelines(records)
         fileHandle.close()
 
-        #print("wrote",filename)
+        if DBG:
+            print("wrote",filename)
 
         # reset current values
         for i in range(5):
@@ -1303,33 +1336,23 @@ class TabControl:
 
         if unit == 1:
             position = M1.readMotor()
-            #print 'unit',unit,tab1,'read motor',position
+            if DBG:
+                print 'unit',unit,tab1,'read motor',position
             closest = T.getClosest(unit, position, tab1)
-            #print("tab1",tab1)
             tmp1[closest][2] = position
             #print("tmp1",tmp1)
         if unit == 2:
             position = M2.readMotor()
             closest = T.getClosest(unit, position, tab2)
-            #print("GET tab2",tab2)
-            #tmp2[closest][2] = position
-            #print("GET tmp2", tmp2)
         if unit == 3:
             position = M3.readMotor()
-            #print(tab3)
             closest = T.getClosest(unit, position, tab3)
-            #closest = 0
-            #print(tab3)
-            # tab3[1] = ['3', 'user', position, 'User']
         if unit == 4:
             position = M4.readMotor()
-            #print(tab4)
             closest = T.getClosest(unit, position, tab4)
-            #closest = 0
-            #print(tab4)
-            #tmp4[1][2] = position
 
-        #print("GET Radio --- ",unit,closest,position)
+        if DBG:
+            print("GET Radio --- ",unit,closest,position)
         return closest
 
     def getClosest(self, unit, position, tablist):
@@ -1344,14 +1367,13 @@ class TabControl:
 
         global _warn1
         #global tmp1, tmp2, tmp3, tmp4
-        #print(tablist)
+        if DBG:
+            print(tablist)
 
         list_of_numbers = [int(i[2]) for i in tablist]
         closest = min(enumerate(list_of_numbers), key=lambda ix: (abs(ix[1] - position)))[0]
         nearest = list_of_numbers[closest]
         difference = position - nearest
-        #print(list_of_numbers)
-        #print("Closest", unit,difference,position,nearest,closest)
         if abs(difference) > 0 and unit < 3:
             message = "Motor " + str(unit) + " at " + str(position) + " is off " + str(difference) + " steps from " + str(nearest) + ". Re-click selection."
             tk.Label(page[unit], font=20, foreground="#EE0000", text=message).place(x=50, y=240, width=450, height=25)
@@ -1359,15 +1381,6 @@ class TabControl:
         elif unit < 3:
             tk.Label(page[unit], font=20, foreground="#D0D0D0", text=_warn1).place(x=50, y=240, width=450, height=25)
             _warn = ""
-        # if unit == 1:
-        #     tmp1[closest][2] = position
-        # if unit == 2:
-        #     tmp2[closest][2] = position
-        # if unit == 3:
-        #     tmp3[closest][2] = position
-        # if unit == 4:
-        #     tmp4[closest][2] = position
-        #print("TAB" + str(unit), position)
         return closest
 
         if abs(difference) > 0:
@@ -1441,7 +1454,6 @@ class TabControl:
                 i[2] = Location[unit][n]
                 tabN.append(i)
                 n+=1
-            #print(unit,tabN)
             if (unit == 1):
                 pos1 = tabN
             if (unit == 2):
