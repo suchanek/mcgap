@@ -243,7 +243,7 @@ class MotorControl:
 		"""
         try:
             self.client.close()
-            print("CLOSE succeeded")
+            print(".. Close succeeded", self.unit)
         except:
             print("Can't close - null client!")
         return
@@ -257,7 +257,7 @@ class MotorControl:
 		:return client:
 		"""
         if self.connected:
-            print("-- Already Connected?")
+            print("-- Already Connected ", self.unit)
             return True
         # we should really use the
         port = port485
@@ -266,7 +266,7 @@ class MotorControl:
 # ModbusClient(method='rtu', port='/dev/ttyUSB0', parity='N', baudrate=9600, bytesize=8, stopbits=2, timeout=1, strict=False)
         self.client = ModbusClient(method='rtu', port=port, retries=10, timeout=0.5,
                             rtscts=True, parity='E', baudrate=9600, strict=False, stopbits=2, unit=unit)
-        print(".. connecting..")
+        print(".. Connecting ", self.unit)
         try:
             res = self.client.connect()
         except OSError as e:
@@ -490,11 +490,9 @@ class MotorControl:
             return 1000
 
         # log.debug("READING REGISTER ")
-        self.connectMotor()
-        if self.client:
+        
+        if self.connectMotor():
             read = self.client.read_holding_registers(0x00D7, 1, unit=unit)
-            print(read)
-            upprpos = read.registers[0]
             print("READ MOTOR", unit, "LOC", position, "POS", self.position)
             read = self.client.read_holding_registers(0x00C7, 1, unit=unit)
             log.debug(read)
@@ -536,13 +534,12 @@ class MotorControl:
             pos = self.readMotor()
         
         delta = location - pos
-        self.connectMotor()
-        # print("CLIENT",unit,self.client)        
-        if self.client and self.outOfRange(delta):
+          
+        if self.connectMotor() and self.outOfRange(delta):
             print("SEND IS OUT OF RANGE RETURN")
             self.closeMotor()
             return
-        if self.client:
+        if self.connectMotor():
             setPosition = int(location) 
             print("SEND WRITE TRY ",unit," TO ",setPosition)
             self.client.write_register(0x7D, 0x20, unit=unit)
@@ -683,22 +680,22 @@ class InputControl:
             val = str(Upper[t])
         var.set(val)
 
-        #if t < 3:
-            #e1 = tk.Label(page[t], font=12, bg="#FFFFFF", text=var.get(), justify='right')
-            #e1.place(x=x+20, y=y, width=60, height=20)
         if t > 2:
-            #e1 = tk.Label(page[t], font=12, bg="#FFFFFF", text=var.get(), justify='right')
-            #e1.place(x=x+10, y=y+20, width=60, height=20)
             val = Location[t] - Reference[t]
             st = I.convertS2Dcd(val, Resolution[t])
+            
             str1 = tk.StringVar()
             str1.set(str(val))
-            str1.trace("w", lambda name, index, mode, sv=str1: I.callback(str1, t, 205, 145))
+            print("Val: ", val)
+            #str1.trace("w", lambda name, index, mode, sv=str1: I.callback(str1, t, 205, 145))
             e1 = tk.Label(page[t], font=12, bg="#FFFFFF", text=st, justify='right')
+            print("ST:", st)
             e1.place(x=x, y=y-50, width=80, height=20)
             var1 = str1.get()
             var2 = str2.get()
+            print("Var1", var1, "Var 2", var2)
             if I.is_number(var1) and I.is_number(var2):
+                print("Yes!")
                 val = (float(var1) - float(var2)) * 360.0 / float(Resolution[t])
                 deg = int(val)
                 min = (val - float(deg)) * 60.0
@@ -754,13 +751,13 @@ class InputControl:
         # convert a step value to decimal degrees
 
         dg = float(int(val)) * 360.0 / float(res)
-        st =str(dg)
+        st = str(dg)
         if val < 0:
             st = "-" + st
         return st
 
 
-    def convertS2   (self, val, res):
+    def convertS2(self, val, res):
         # convert a step value to degrees, decimal minutes
 
         dg = float(int(val)) * 360.0 / float(res)
