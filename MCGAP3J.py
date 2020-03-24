@@ -101,7 +101,7 @@ CONFIG_POSIX = CONFIG_PATH.as_posix()
 
 DFLT_FILENAME = "GAPMC.dft"
 DFLT_PATH = PATH.joinpath(DFLT_FILENAME)
-DFLT_POSIX = DFLT_PATH.as_posiix()
+DFLT_POSIX = DFLT_PATH.as_posix()
 
 
 def exit():
@@ -141,7 +141,7 @@ def message(unit, mflag, msg):
     else:
         if DBG:
             print(unit,"BLANK MESSAGE")
-        tk.Label(page[unit], font=20, foreground="#F0F0F0", text=msg).place(x=100, y=40, width=350, height=25)
+        tk.Label(page[unit], font=20, foreground="D0D0D0", text=msg).place(x=100, y=40, width=350, height=25)
 
 
 def warn():
@@ -420,7 +420,7 @@ class MotorControl:
             if flag > 0:
                 tk.Label(page[unit], font=20, foreground="#000000", text=msg).place(x=50, y=240, width=350, height=25)
             #else:
-            #    tk.Label(page[unit], font=20, foreground="#F0F0F0", text=msg).place(x=50, y=240, width=350, height=25)
+            #    tk.Label(page[unit], font=20, foreground="D0D0D0", text=msg).place(x=50, y=240, width=350, height=25)
 
             return flag
     
@@ -496,7 +496,7 @@ class MotorControl:
             sleep(delay)
             read = client.read_holding_registers(0x00C7, 1, unit=unit)
             rp = read.registers[0]
-            #tk.Label(page[unit], font=20, foreground="#F0F0F0", text=msg).place(x=50, y=240, width=350, height=25)
+            #tk.Label(page[unit], font=20, foreground="D0D0D0", text=msg).place(x=50, y=240, width=350, height=25)
             #e1 = tk.Label(page[unit], font=12, bg="#FFFFFF", text="WAIT", justify='right')
         if DBG:
             print("readDelay OUT",rp)
@@ -586,11 +586,11 @@ class MotorControl:
             self.client.write_register(0x0383, 1, unit=unit)
             self.client.write_register(0x1805, speed, unit=unit)
             if int(delta) > 0:
-            if DBG:
-                print("SEND MOTOR FWD", unit, self.position)
+                if DBG:
+                    print("SEND MOTOR FWD", unit, self.position)
             if int(delta) < 0:
-            if DBG:
-                print("SEND MOTOR REV", unit, self.position)
+                if DBG:
+                    print("SEND MOTOR REV", unit, self.position)
             self.client.write_register(0x1803, setPosition, unit=unit)
             self.client.write_register(0x7D, 0x8, unit=unit)
             rp = self.readDelay(setPosition)
@@ -635,7 +635,7 @@ class MotorControl:
        
         self.position = rp
         if DBG:
-            print("WRITE",unit,position,"SPD",Speed[unit])
+            print("WRITE",unit, self.position,"SPD",Speed[unit])
 
     # this really doesn't move the motor - it only sets its internal location
     def setMotor(self, tab):
@@ -1255,7 +1255,7 @@ class LocalIO:
         # if s[1] > 5000:
         #     s[1] = 5000
         #     msg = "Speed limit is 5000"
-        #     tk.Label(conf, font=20, foreground="#F0F0F0", text=msg).place(x=100, y=240, width=350, height=25)
+        #     tk.Label(conf, font=20, foreground="D0D0D0", text=msg).place(x=100, y=240, width=350, height=25)
         s[2] = tk.Entry(page[0], width=8, justify=RIGHT, borderwidth=2)
         s[3] = tk.Entry(page[0], width=8, justify=RIGHT, borderwidth=2)
         s[4] = tk.Entry(page[0], width=8, justify=RIGHT, borderwidth=2)
@@ -1337,7 +1337,7 @@ class TabControl:
         if unit == 1:
             position = M1.readMotor()
             if DBG:
-                print 'unit',unit,tab1,'read motor',position
+                print('unit',unit,tab1,'read motor',position)
             closest = T.getClosest(unit, position, tab1)
             tmp1[closest][2] = position
             #print("tmp1",tmp1)

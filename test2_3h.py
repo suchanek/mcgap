@@ -36,12 +36,12 @@ _mode = 0
 limitSet = "Show"
 # i don't know if this is right but DISABLE is used and wasn't defined globally
 DISABLE = 0
-TEST = 0
+TEST = 1
 mflag = 0
 
 # set to 1 for debug printing
 
-DBG = 1
+DBG = 0
 
 Reference = [0,0,0,0,0]
 Location = [0, 0, 0, 0, 0] # array of current coordinates
@@ -255,6 +255,7 @@ class MotorControl:
         self.client = 0
         self.target = 0 # targeted step location
         self.connected = False
+        #print("Client:", self.client)
 
     def closeMotor(self):
         """
@@ -284,7 +285,6 @@ class MotorControl:
             if DBG:
                 print("-- Already Connected ", self.unit)
             return True
-        # only use the 485 interace
         port = port485
         unit = self.unit
         self.client = ModbusClient(method='rtu', port=port, retries=10, timeout=0.5,
@@ -325,13 +325,16 @@ class MotorControl:
         if DBG:
             print("jogMotor", unit, delta)
 
-        if self.outOfRange(delta):
-            if DBG:
-                print("JOG IS OUT OF RANGE RETURN")
-            return
         self.connectMotor()
 
-        if self.client():
+        if self.client and self.outOfRange(delta):
+            if DBG:
+                print("JOG IS OUT OF RANGE RETURN")
+            self.closeMotor()
+            return
+
+        # we don't need try/except since we are not throwing exceptions!
+        if self.client:
             cp = self.readMotor()
             jogPosition = int(delta) + cp
             self.client.write_register(0x7D, 0x20, unit=unit)
@@ -570,12 +573,11 @@ class MotorControl:
             pos = self.readMotor()
         
         delta = location - pos
-        
-        if self.outOfRange(delta):
-            print("SEND IS OUT OF RANGE RETURN")
-            return
-
         self.connectMotor()
+        if self.client and self.outOfRange(delta):
+            print("SEND IS OUT OF RANGE RETURN")
+            self.closeMotor()
+            return
         if self.client:
             setPosition = int(location) 
             if DBG:
@@ -635,6 +637,7 @@ class MotorControl:
         if DBG:
             print("WRITE",unit,position,"SPD",Speed[unit])
 
+    # this really doesn't move the motor - it only sets its internal location
     def setMotor(self, tab):
         """
 		Set the motor target position using the location for the selected RadioButton.
@@ -666,13 +669,8 @@ class MotorControl:
 		:param tab: Tab number
 		:return: None
 		"""
-        try:
-            self.client.write_register(0x7D, 0x20, unit=self.unit)
-            self.client.write_register(0x7D, 0x0, unit=self.unit)
-        except:
-            print("Can't stop motor - null client?")
-        return
-
+        self.client.write_register(0x7D, 0x20, unit=self.unit)
+        self.client.write_register(0x7D, 0x0, unit=self.unit)
 # class ends
 
 
@@ -1738,20 +1736,12 @@ M3 = MotorControl(3, "com9", 10000, 0, 100000, 1000, 0, 12500)
 M4 = MotorControl(4, "com3", 10000, 0, 100000, 1000, 0, 150000)
 M1.connectMotor()
 M1.closeMotor()
-print("M1", M1.connected)
-
 M2.connectMotor()
 M2.closeMotor()
-print("M2", M2.connected)
-
 M3.connectMotor()
 M3.closeMotor()
-print("M3", M3.connected)
-
 M4.connectMotor()
 M4.closeMotor()
-print("M4", M4.connected)
-
 if not TEST and not M1.connected and not M2.connected and not M3.connected and not M4.connected:
         warn()
 
