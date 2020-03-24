@@ -18,6 +18,9 @@ import logging
 import copy
 from time import sleep
 
+from pymodbus.exceptions import ModbusIOException as ModbusExcept
+from pymodbus.exceptions import ConnectionException as ConnExcept
+
 FORMAT = ('%(asctime)-15s %(threadName)-15s '
           '%(levelname)-8s %(module)-15s:%(lineno)-8s %(message)s')
 
@@ -237,6 +240,16 @@ class MotorControl:
         if DBG:
             print("Client:", self.client)
 
+    def checkMotor(self):
+        """
+        """
+
+        if self.connected:
+            error = ModbusExcept(self.client)
+            excpt = ConnExcept(self.client)
+            print(error,excpt)
+        
+
     def closeMotor(self):
         """
 		Close connection to motor unit
@@ -330,6 +343,7 @@ class MotorControl:
         # we don't need try/except since we are not throwing exceptions!
         if self.connected:
             self.chkAlrm()
+            self.checkMotor()
         if self.client:
             cp = self.readMotor()
             jogPosition = int(delta) + cp
@@ -563,6 +577,7 @@ class MotorControl:
         self.connectMotor()
         if self.connected:
             self.chkAlrm()
+            self.checkMotor()
         if self.client:
             read = self.client.read_holding_registers(0x00D7, 1, unit=unit)
             if DBG:
@@ -620,6 +635,7 @@ class MotorControl:
             return
         if self.connected:
             self.chkAlrm()
+            self.checkMotor()
         if self.client:
             setPosition = int(location) 
             if DBG:
@@ -1424,7 +1440,7 @@ class TabControl:
         elif unit < 3:
             tk.Label(page[unit], font=20, foreground="#C0C0C0", text=_warn1).place(x=50, y=240, width=450, height=25)
             _warn = ""
-        return closest
+        #return closest
 
         if abs(difference) > 0:
             message = "Notice: Motor is off " + str(difference) + " steps. Click selection."
