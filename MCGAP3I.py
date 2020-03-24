@@ -133,6 +133,7 @@ def menu():
     filemenu.add_command(label="Exit", command=main.quit)
     menubar.add_cascade(label="File", menu=filemenu)
 
+
 def message(unit, mflag, msg):
     if mflag == 1:
         print(unit,"MESSAGE:",msg,">",page[unit],"<")
