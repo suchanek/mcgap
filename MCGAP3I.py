@@ -34,6 +34,7 @@ limitSet = "Show"
 # i don't know if this is right but DISABLE is used and wasn't defined globally
 DISABLE = 0
 TEST = 0
+DBG = 1
 mflag = 0
 
 Reference = [0,0,0,0,0]
@@ -686,7 +687,10 @@ class InputControl:
         """
         val = str(var.get())
 
-        #print("CALLBACK",t,val)
+        if not val:
+            return
+        if DBG:
+            print("CALLBACK",t,val)
         try:
             int(val)
         except:
@@ -705,32 +709,10 @@ class InputControl:
             val = str(Upper[t])
         var.set(val)
 
-        #return True
-
-        #if t < 3:
-            #e1 = tk.Label(page[t], font=12, bg="#FFFFFF", text=var.get(), justify='right')
-            #e1.place(x=x+20, y=y, width=60, height=20)
-        if t > 2:
-            #e1 = tk.Label(page[t], font=12, bg="#FFFFFF", text=var.get(), justify='right')
-            #e1.place(x=x+10, y=y+20, width=60, height=20)
-            val = Location[t] - Reference[t]
-            st = I.convertS2Dcd(val, Resolution[t])
-            str1 = tk.StringVar()
-            str1.set(str(val))
-            str1.trace("w", lambda name, index, mode, sv=str1: I.callback(str1, t, 205, 145))
-            e1 = tk.Label(page[t], font=12, bg="#FFFFFF", text=st, justify='right')
-            e1.place(x=x, y=y-50, width=80, height=20)
-            var1 = str1.get()
-            var2 = str2.get()
-            if I.is_number(var1) and I.is_number(var2):
-                val = (float(var1) - float(var2)) * 360.0 / float(Resolution[t])
-                deg = int(val)
-                min = (val - float(deg)) * 60.0
-                st = str(deg)+u"\u00b0"+str(abs(min))+"'"
-                e1 = tk.Label(page[t], font=20, fg="#DD0000", bg="#FF55FF", text=st, state=DISABLE, justify='right')
-                e1.place(x=70, y=22, width=80, height=20)
+        self.setAngle(val, t, x, y)
 
         return True
+
 
     def convertL2S(self, lstr):
         # initialization of string to ""
@@ -810,6 +792,21 @@ class InputControl:
         rp = Location[unit]
         strv = tk.StringVar()
         strv.set(rp)
+
+    def setAngle(self, val, t, x, y):
+            """
+            Display the motor angle
+            """
+            if t > 2:
+                loc = Location[t] - Reference[t]
+                st = I.convertS2Dcd(loc, Resolution[t])
+                str1 = tk.StringVar()
+                str1.set(str(loc))
+                str1.trace("w", lambda name, index, mode, sv=str1: I.callback(str1, t, 205, 145))
+            # ANGLE DISPLAY WINDOW. "Label" sets x, y
+                e1 = tk.Label(page[t], font=12, bg="#FFFFFF", text=st, justify='right')
+                e1.place(x=x, y=y-50, width=80, height=20)
+
 
     def is_number(self, var):
         """
@@ -966,7 +963,7 @@ class LocalIO:
         :return: selected filename
         """
         filename = askopenfilename(initialdir="./", title="Select file",
-                                   filetypes=(("config files", "*.cfg"), ("all files", "*.*")))
+                                   filetypes=(("config files", "*.usr"), ("all files", "*.*")))
 
         # global pos1, pos2, pos3, pos4
         # item1, item2, item3, item4 = 0
@@ -1047,7 +1044,7 @@ class LocalIO:
         #T.updateTabLocations()
 
         filename = asksaveasfilename(initialdir="./", title="Select file",
-                                     filetypes=(("config files", "*.cfg"), ("all files", "*.*")))
+                                     filetypes=(("config files", "*.usr"), ("all files", "*.*")))
 
         # define file
         ttl1 = "# GAPMC configuration\n"
