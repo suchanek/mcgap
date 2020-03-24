@@ -33,7 +33,7 @@ _mode = 0
 limitSet = "Show"
 # i don't know if this is right but DISABLE is used and wasn't defined globally
 DISABLE = 0
-TEST = 0
+TEST = 1
 mflag = 0
 
 Reference = [0,0,0,0,0]
@@ -944,7 +944,7 @@ class LocalIO:
         :return: selected filename
         """
         filename = askopenfilename(initialdir="./", title="Select file",
-                                   filetypes=(("config files", "*.cfg"), ("all files", "*.*")))
+                                   filetypes=(("config files", "*.usr"), ("all files", "*.*")))
 
         # global pos1, pos2, pos3, pos4
         # item1, item2, item3, item4 = 0
@@ -1025,7 +1025,7 @@ class LocalIO:
         #T.updateTabLocations()
 
         filename = asksaveasfilename(initialdir="./", title="Select file",
-                                     filetypes=(("config files", "*.cfg"), ("all files", "*.*")))
+                                     filetypes=(("config files", "*.usr"), ("all files", "*.*")))
 
         # define file
         ttl1 = "# GAPMC configuration\n"
