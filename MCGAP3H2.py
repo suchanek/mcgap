@@ -601,7 +601,6 @@ class MotorControl:
         self.position = rp
         #print("WRITE",unit,position,"SPD",Speed[unit])
 
-    # this really doesn't move the motor - it only sets its internal location
     def setMotor(self, tab):
         """
 		Set the motor target position using the location for the selected RadioButton.

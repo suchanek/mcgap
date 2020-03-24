@@ -35,6 +35,7 @@ limitSet = "Show"
 DISABLE = 0
 TEST = 0
 DBG = 1
+DBG2 = 0
 mflag = 0
 
 Reference = [0,0,0,0,0]
@@ -1381,8 +1382,7 @@ class TabControl:
         elif unit < 3:
             tk.Label(page[unit], font=20, foreground="#D0D0D0", text=_warn1).place(x=50, y=240, width=450, height=25)
             _warn = ""
-        return closest
-
+ 
         if abs(difference) > 0:
             message = "Notice: Motor is off " + str(difference) + " steps. Click selection."
             _warn1 = message
