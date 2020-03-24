@@ -253,10 +253,10 @@ class MotorControl:
         except:
             res = 0
         # this looks sketchy -egs-
-        if TEST and self.unit != 3:
+        if TEST:
             res = 1
-            self.client = "RTU"
-            self.connected = True
+            #self.client = "RTU"
+            #self.connected = True
         if res:
             self.connected = True
             return True
@@ -278,7 +278,7 @@ class MotorControl:
 
         #print "jogMotor",delta
         if I.outOfRange(unit, delta) > 0:
-            #print "JOG IS OUT OF RANGE RETURN"
+            print "JOG IS OUT OF RANGE RETURN"
             return
         # we don't need try/except since we are not throwing exceptions!
         # no. connectMotor returns a boolean, not a real 'client' -egs-
@@ -478,7 +478,7 @@ class MotorControl:
         """
 
         # unit = self.unit
-        print "sendMotor", location
+        print("sendMotor", location), 
 
         if (isinstance(location, str)):
             location = T.getLabel(unit)
