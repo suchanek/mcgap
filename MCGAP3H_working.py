@@ -59,18 +59,22 @@ tab = 0
 key = ''
 val = 0
 label = ''
+
 jog1 = []
 jog2 = []
 jog3 = []
 jog4 = []
+
 tab1 = []
 tab2 = []
 tab3 = []
 tab4 = []
+
 tmp1 = []
 tmp2 = []
 tmp3 = []
 tmp4 = []
+
 pos1 = ""
 pos2 = ""
 pos3 = ""
@@ -262,8 +266,6 @@ class MotorControl:
         # we should really use the
         port = port485
         unit = self.unit
-
-# ModbusClient(method='rtu', port='/dev/ttyUSB0', parity='N', baudrate=9600, bytesize=8, stopbits=2, timeout=1, strict=False)
         self.client = ModbusClient(method='rtu', port=port, retries=10, timeout=0.5,
                             rtscts=True, parity='E', baudrate=9600, strict=False, stopbits=2, unit=unit)
         print(".. Connecting ", self.unit)
@@ -300,10 +302,12 @@ class MotorControl:
         print("jogMotor", unit, delta)
 
         self.connectMotor()
+
         if self.client and self.outOfRange(delta):
             #print("JOG IS OUT OF RANGE RETURN")
             self.closeMotor()
             return
+
         # we don't need try/except since we are not throwing exceptions!
         if self.client:
             cp = self.readMotor()
@@ -361,9 +365,10 @@ class MotorControl:
             grat2Pos = T.getRadioButn(4, tab4, page[4])
             grate2.set(grat2Pos)
 
+        Location[unit] = rp
         I.setEntry(unit, rp)
         T.setLabel(unit, rp)
-        Location[unit] = rp
+        
         self.position = rp
         print("JogHERE",unit,jogPosition,"=",rp)
         if jogPosition != rp:
@@ -529,7 +534,7 @@ class MotorControl:
         print("sendMotor", unit, location)
 
         if TEST:
-            pos = 10000
+            pos = 1000
         else:
             pos = self.readMotor()
         
@@ -591,10 +596,11 @@ class MotorControl:
             grat1Pos = T.getRadioButn(3, tab3, page[3])
         if unit == 4:
             grat2Pos = T.getRadioButn(4, tab4, page[4])
-
+        
+        Location[unit] = rp
         I.setEntry(unit, rp)
         T.setLabel(unit, rp)
-        Location[unit] = rp
+        
         self.position = rp
         #print("WRITE",unit,position,"SPD",Speed[unit])
 
@@ -631,6 +637,7 @@ class MotorControl:
 		"""
         self.client.write_register(0x7D, 0x20, unit=self.unit)
         self.client.write_register(0x7D, 0x0, unit=self.unit)
+# class ends
 
 
 class InputControl:
