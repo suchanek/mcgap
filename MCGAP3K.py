@@ -18,8 +18,8 @@ import logging
 import copy
 from time import sleep
 
-from pymodbus.exceptions import ModbusIOException as ModbusExcept
-from pymodbus.exceptions import ConnectionException as ConnExcept
+from pymodbus.exceptions import ModbusIOException as ModbusException
+from pymodbus.exceptions import ConnectionException as ConnException
 
 FORMAT = ('%(asctime)-15s %(threadName)-15s '
           '%(levelname)-8s %(module)-15s:%(lineno)-8s %(message)s')
@@ -38,6 +38,8 @@ limitSet = "Show"
 DISABLE = 0
 TEST = 0
 DBG = 1
+DBG2 = 0
+
 mflag = 0
 
 Reference = [0,0,0,0,0]
@@ -115,7 +117,7 @@ def exit():
 
     return:
     """
-    sys.exit()
+    sys.exit(10)
     return None
 
 def menu():
@@ -137,12 +139,12 @@ def menu():
 
 def message(unit, mflag, msg):
     if mflag == 1:
-        if DBG:
+        if DBG2:
             print(unit,"MESSAGE:",msg,">",page[unit],"<")
         tk.Label(main, font=20, foreground="#000000", text=msg).place(x=100, y=40, width=350, height=25)
         mflag = 0
     else:
-        if DBG:
+        if DBG2:
             print(unit,"BLANK MESSAGE")
         tk.Label(page[unit], font=20, foreground="#F0F0F0", text=msg).place(x=100, y=40, width=350, height=25)
 
@@ -161,13 +163,16 @@ def warn():
     windowHeight = temp.winfo_reqheight()
     positionRight = int(temp.winfo_screenwidth()/2 - windowWidth/1)
     positionDown = int(temp.winfo_screenheight()/2 - windowHeight/1)
-    temp.geometry("+{}+{}".format(positionRight, positionDown))
-    b = tk.Button(w, text='QUIT', font=30, width=35, command = exit, anchor = S) 
-    b.configure(width = 10, activebackground = "#BBBBBB")
+
+    # temp.geometry("+{}+{}".format(positionRight, positionDown))
+    temp.geometry(f'+{positionRight}+{positionDown}')
+
+    b = tk.Button(w, text='QUIT', font=30, width=35, command=exit, anchor=S) 
+    b.configure(width=10, activebackground="#BBBBBB")
     bw = w.create_window(120, 110, anchor=NW, window=b)
     b.place(x=120,y=110)
     temp.mainloop()
-    temp.destroy
+
     exit()
 
 def run():
@@ -222,7 +227,6 @@ class MotorControl:
 
     def __init__(self, unit, port, speed, position, resolution, zero, lower, upper):
         """
-
         :rtype: object
         """
         self.unit = unit
@@ -234,7 +238,7 @@ class MotorControl:
         self.lower = lower
         self.upper = upper
         # make the correct object, don't try to connect
-        self.client = 0
+        self.client = ModbusClient(method='rtu')
         self.target = 0 # targeted step location
         self.connected = False
         if DBG:
@@ -242,14 +246,16 @@ class MotorControl:
 
     def checkMotor(self):
         """
+        Return true if the motor is connected and client is not a modbusioException
         """
 
         if self.connected:
-            if isinstance(self.client, ModbusExcept):
+            if isinstance(self.client, ModbusException):
                 print("Modbus ioexception for: ", self.unit)
                 return False
             return True
-        
+        else:
+            return False
 
     def closeMotor(self):
         """
@@ -276,36 +282,41 @@ class MotorControl:
 		:param unit:
 		:return client:
 		"""
+        res = 0
         if self.connected:
             if DBG:
                 print("-- Already Connected?")
             return True
-        # we should really use the
-        port = self.port
+
+        port = port485
+        port = '/dev/cu.EGSiPhone-WirelessiAP'
+
         unit = self.unit
 
         self.client = ModbusClient(method='rtu',
-                            port=port485,
-                            retries=1000,
-                            timeout=0.4,
+                            port=port,
+                            retries=100,
+                            timeout=0.5,
                             rtscts=True,
                             parity='E',
                             baudrate=9600,
                             strict=False,
                             stopbits=2,
                             unit=unit)
+        if isinstance(self.client, ConnException):
+            print("Connection error!")
+            self.connected = False
+            
         if DBG:
             print(".. connecting..")
+        # this throws an error when port not available
         try:
-            # we should really use self.port for port here... -egs-
-            # but we need to set it by reading the actual COM port #
-            
             res = self.client.connect()
-        except OSError as e:
-            if DBG:
-                print("--- Can't Connect", unit)
+        except:
             res = 0
+            print("Connection error!")
 
+        TEST2 = 0
         if TEST:
             res = 1
             self.connected = True
@@ -318,6 +329,8 @@ class MotorControl:
             return True
         else:
             self.connected = False
+            if DBG:
+                print("--- Can't Connect ", unit)
             return False
 
     def jogMotor(self, delta):
@@ -336,16 +349,16 @@ class MotorControl:
         if DBG:
             print("CLIENT",unit,self.client)
         self.connectMotor()
-        if self.client and self.outOfRange(delta):
+        if self.outOfRange(delta):
             if DBG:
                 print("JOG IS OUT OF RANGE RETURN")
             self.closeMotor()
             return
-        # we don't need try/except since we are not throwing exceptions!
-        if self.connected:
-            self.chkAlrm()
-            self.checkMotor()
-        if self.client:
+        
+        #if self.checkMotor():
+        #    self.chkAlrm()
+            
+        if self.checkMotor():
             cp = self.readMotor()
             jogPosition = int(delta) + cp
             self.client.write_register(0x7D, 0x20, unit=unit)
@@ -382,7 +395,8 @@ class MotorControl:
                 print("jog to",rp)
             log.debug(rp)
             if rp == "None" or rp == "NoneType":
-                warn()
+               pass
+            # warn()
         else:
             rp = self.target
             jogPosition = int(delta) + rp
@@ -444,7 +458,7 @@ class MotorControl:
     def chkAlrm(self):
         read = 0
 
-        if isinstance(self.client, ModbusExcept):
+        if isinstance(self.client, ModbusException):
             return True
 
         if self.client and not TEST:
@@ -574,6 +588,8 @@ class MotorControl:
         global tk
         unit = self.unit
         position = self.position
+        motorOK = False
+        alarmOK = False
 
         if TEST:
             #self.connectMotor()
@@ -582,14 +598,12 @@ class MotorControl:
 
         # log.debug("READING REGISTER ")
         self.connectMotor()
-        if self.connected:
-            self.chkAlrm()
-            self.checkMotor()
-        if self.client:
+
+        if self.checkMotor():
             read = self.client.read_holding_registers(0x00D7, 1, unit=unit)
             if DBG:
                 print(read)
-            upprpos = read.registers[0]
+            #upprpos = read.registers[0]
             if DBG:
                 print("READ MOTOR", unit, "LOC", position, "POS", self.position)
             read = self.client.read_holding_registers(0x00C7, 1, unit=unit)
@@ -597,7 +611,7 @@ class MotorControl:
             position = read.registers[0] 
             self.closeMotor()
         else:
-            warn()
+            # warn()
             return
 
         self.position = position
@@ -628,22 +642,20 @@ class MotorControl:
             print("sendMotor", unit, location)
 
         if TEST:
-            pos = 10000
+            pos = 1000
         else:
             pos = self.readMotor()
         
         delta = location - pos
         self.connectMotor()
       
-        if self.client and self.outOfRange(delta):
+        if self.outOfRange(delta):
             if DBG:
                 print("SEND IS OUT OF RANGE RETURN")
             self.closeMotor()
             return
-        if self.connected:
-            self.chkAlrm()
-            self.checkMotor()
-        if self.client:
+        
+        if self.checkMotor():
             setPosition = int(location) 
             if DBG:
                 print("SEND WRITE TRY ",unit," TO ",setPosition)
@@ -677,7 +689,8 @@ class MotorControl:
                 rp = self.readDelay(setPosition)
             self.closeMotor()
             if rp == "None" or rp == "NoneType":
-                warn()
+                pass
+                # warn()
         else:
             rp = self.target
             mflag = 1
@@ -735,8 +748,11 @@ class MotorControl:
 		:param tab: Tab number
 		:return: None
 		"""
-        self.client.write_register(0x7D, 0x20, unit=self.unit)
-        self.client.write_register(0x7D, 0x0, unit=self.unit)
+        if self.checkMotor():
+            self.client.write_register(0x7D, 0x20, unit=self.unit)
+            self.client.write_register(0x7D, 0x0, unit=self.unit)
+        else:
+            print("Can't stop motor - client ioException error")
 
 
 class InputControl:
@@ -1389,7 +1405,6 @@ class TabControl:
             s = 0
         return int(s)
 
-
     def getRadioButn(self, unit, tablist, page):
         """
         Gets the RadioButton that matches the motor position.
@@ -1796,6 +1811,8 @@ M4.connectMotor()
 M4.closeMotor()
 if not TEST and not M1.connected and not M2.connected and not M3.connected and not M4.connected:
         warn()
+        exit()
+
 
 """
 Main loop, begin.
