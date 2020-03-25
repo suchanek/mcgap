@@ -144,7 +144,7 @@ def message(unit, mflag, msg):
     else:
         if DBG:
             print(unit,"BLANK MESSAGE")
-        tk.Label(page[unit], font=20, foreground="C0C0C0", text=msg).place(x=100, y=40, width=350, height=25)
+        tk.Label(page[unit], font=20, foreground="#F0F0F0", text=msg).place(x=100, y=40, width=350, height=25)
 
 
 def warn():
@@ -245,9 +245,10 @@ class MotorControl:
         """
 
         if self.connected:
-            error = ModbusExcept(self.client)
-            excpt = ConnExcept(self.client)
-            print(error,excpt)
+            if isinstance(self.client, ModbusExcept):
+                print("Modbus ioexception for: ", self.unit)
+                return false
+            return True
         
 
     def closeMotor(self):
@@ -441,16 +442,21 @@ class MotorControl:
             return flag
     
     def chkAlrm(self):
-            if self.client and not TEST:
-                read = self.client.read_holding_registers(0x007F, 1, unit=self.unit)
-                alarm = read.registers[0] 
-            else:
-                alarm = 64
-            if alarm == 64:
-                self.readAlrm()
-                self.connected = False
-            else:
-                return 
+        read = 0
+
+        if isinstance(self.client, ModbusExcept):
+            return True
+
+        if self.client and not TEST:
+            read = self.client.read_holding_registers(0x007F, 1, unit=self.unit)
+            alarm = read.registers[0] 
+        else:
+            alarm = 64
+        if alarm == 64:
+            self.readAlrm()
+            self.connected = False
+        else:
+            return 
 
     def readAlrm(self):
         """
@@ -464,14 +470,15 @@ class MotorControl:
         if self.connectMotor() and not TEST:
             read = self.client.read_holding_registers(0x0081, 1, unit=unit)
             alarm = read.registers[0]
+            self.closeMotor()
         else:
             alarm = 99
-        self.closeMotor()
+        
 
         b1 = tk.Button(main, text="Alarm", font=26, fg='red', bg='white', command=partial(self.seeAlrm, alarm), pady=2, height=30, width=70, relief='ridge')
         b1.place(x=10, y=30, width=70, height=30)
-
-
+        return
+        
     def seeAlrm(self, error):
         warn2 = "Motor " + str(self.unit) + " is NOT available."
         warn3 = "and shows error " + str(error) + "."
@@ -1438,7 +1445,7 @@ class TabControl:
             tk.Label(page[unit], font=20, foreground="#EE0000", text=message).place(x=50, y=240, width=450, height=25)
             _warn1 = message
         elif unit < 3:
-            tk.Label(page[unit], font=20, foreground="#C0C0C0", text=_warn1).place(x=50, y=240, width=450, height=25)
+            tk.Label(page[unit], font=20, foreground="#F0F0F0", text=_warn1).place(x=50, y=240, width=450, height=25)
             _warn = ""
         #return closest
 
