@@ -1,5 +1,3 @@
-#
-#
 import tkinter as tk
 from tkinter import *
 from tkinter.filedialog   import askopenfilename
@@ -30,6 +28,7 @@ log = logging.getLogger()
 from pymodbus.client.sync import ModbusSerialClient as ModbusClient
 
 # Define Global Variables
+READERROR = -999 # returned when can't read a motor
 filemenu = 0
 _warn1 = ''
 _mode = 0
@@ -169,7 +168,7 @@ def warn():
 
     b = tk.Button(w, text='QUIT', font=30, width=35, command=exit, anchor=S) 
     b.configure(width=10, activebackground="#BBBBBB")
-    bw = w.create_window(120, 110, anchor=NW, window=b)
+    w.create_window(120, 110, anchor=NW, window=b)
     b.place(x=120,y=110)
     temp.mainloop()
 
@@ -177,16 +176,17 @@ def warn():
 
 def run():
     global nb
+    mflag = 1
+
     if M1.connected:
         page[1] = ttk.Frame(nb)
         B.tablet1()
         p1=M1.readMotor()
-        if not p1:
+        if p1 == READERROR:
             # put up a warning that M1 can't be read...
             print("Can't read unit ", M1.unit)
             msg = f"Motor {M1.unit} is not available"
-            mflag = 1
-            message(M1.unit,mflag,msg)
+            message(M1.unit, mflag, msg)
         else:
             I.setEntry(1, p1)
             slidePos = T.getRadioButn(1, tab1, page[1])
@@ -194,57 +194,52 @@ def run():
     else:
         page[1] = ttk.Frame(nb)
         msg = f"Motor {M1.unit} is not available"
-        mflag = 1
-        message(M1.unit,mflag,msg)
+        message(M1.unit, mflag, msg)
     if M2.connected:
         page[2] = ttk.Frame(nb)
         B.tablet2()
         p2=M2.readMotor()
-        if not p2:
+        if p2 == READERROR:
             # put up a warning that M1 can't be read...
             print("Can't read unit ", M2.unit)
             msg = f"Motor {M2.unit} is not available"
-            mflag = 1
-            message(M2.unit,mflag,msg)
+            message(M2.unit, mflag, msg)
         else:
             I.setEntry(2 ,p2)
             cmparPos = T.getRadioButn(2, tab2, page[2])
             source.set(cmparPos)
     else:
         page[2] = ttk.Frame(nb)
-        msg = f"Motor {M1.unit} is not available"
-        mflag = 1
-        message(M2.unit,mflag,msg)
+        msg = f"Motor {M2.unit} is not available"
+        message(M2.unit, mflag, msg)
     if M3.connected:
         page[3] = ttk.Frame(nb)
         B.tablet3()
         p3=M3.readMotor()
-        if not p3:
+        if p3 == READERROR:
             # put up a warning that M1 can't be read...
             print("Can't read unit ", M3.unit)
             msg = f"Motor {M3.unit} is not available"
-            mflag = 1
-            message(M3.unit,mflag,msg)
+            message(M3.unit, mflag, msg)
         else:
             I.setEntry(3, p3)
             grat1Pos = T.getRadioButn(3, tab3, page[3])
             grate1.set(grat1Pos)
     else:
         page[3] = ttk.Frame(nb)
-        msg = f"Motor {M1.unit} is not available"
-        mflag = 1
-        message(M3.unit,mflag,msg)
+        msg = f"Motor {M3.unit} is not available"
+        message(M3.unit, mflag, msg)
 
     if M4.connected:
         page[4] = ttk.Frame(nb)
         B.tablet4()
         p4=M4.readMotor()
-        if not p4:
-            # put up a warning that M1 can't be read...
+        if p4 == READERROR:
+            # put up a warning that M4 can't be read...
             print("Can't read unit ", M4.unit)
-            msg = f"Motor {M1.unit} is not available"
+            msg = f"Motor {M4.unit} is not available"
             mflag = 1
-            message(M4.unit,mflag,msg)
+            message(M4.unit, mflag, msg)
         else:
             I.setEntry(4, p4)
             grat2Pos = T.getRadioButn(4, tab4, page[4])
@@ -264,7 +259,6 @@ def updateTabs():
     nb.forget(page[3])
     nb.forget(page[4])
     page = ["page[0]", "page[1]", "page[2]", "page[3]", "page[4]"]
-
     run()
 
 class MotorControl:
@@ -298,12 +292,12 @@ class MotorControl:
 
         if self.connected:
             if isinstance(self.client, ModbusException):
-                print("checkMotor: Modbus ioexception for unit ", self.unit)
+                print("!!! checkMotor: Modbus ioexception for unit ", self.unit)
                 return False
             # attempt to read a register - if we can't then we have a problem
             read = self.client.read_holding_registers(0x00D7, 1, unit=self.unit)
             if isinstance(read,  ModbusException):
-                print("checkMotor: Modbus ioexception for unit ", self.unit)
+                print("!!! checkMotor: Modbus ioexception for unit ", self.unit)
                 return False
             return True
         else:
@@ -322,8 +316,7 @@ class MotorControl:
             if DBG:
                 print("--- Close succeeded")
         except:
-            if DBG:
-                print("Can't close - null client!")
+            print("!!! Can't close - exception thrown!")
         return
 
     def connectMotor(self):
@@ -357,11 +350,8 @@ class MotorControl:
             
         if DBG:
             print(".. connecting..")
-        try:
-            res = self.client.connect()
-        except:
-            res = 0
-            print("Connection error!")
+        
+        res = self.client.connect()
 
         if TEST:
             res = 1
@@ -449,7 +439,7 @@ class MotorControl:
             mflag = 1
             msg = "Motor " + str(unit) +" is not available"
             print("!!! jogMotor has an ioException for unit ", self.unit)
-            message(unit,mflag,msg)
+            message(unit, mflag, msg)
             return
 
         if unit == 1:
@@ -488,12 +478,14 @@ class MotorControl:
             msg = str(pos + int(delta)) + " is Out of Range"
             flag = 0
             if pos + int(delta) < lower:
+                # we update with actual pos, not lower since that's not right.
+                Location[unit] = pos
                 flag = 1
 
             if pos + int(delta) > upper:
                 flag = 2
-                # potential side effect - why do this?
-                Location[unit] = Upper[unit]
+                # we update with actual pos, not lower since that's not right.
+                Location[unit] = pos
             if flag > 0:
                 tk.Label(page[unit], font=20, foreground="#000000", text=msg).place(x=50, y=240, width=350, height=25)
             #else:
@@ -503,18 +495,23 @@ class MotorControl:
     
     def chkAlrm(self):
         read = 0
-
         if isinstance(self.client, ModbusException):
             return True
-
+        # any time we read or write registers we have to be connected first
         self.connectMotor()
-        if self.checkMotor() and not TEST:
-            read = self.client.read_holding_registers(0x007F, 1, unit=self.unit)
-            alarm = read.registers[0] 
-            self.closeMotor()
+        if self.checkMotor():
+            if TEST:
+                alarm = 64
+                self.closeMotor()
+            else:
+                # should check for exception here
+                read = self.client.read_holding_registers(0x007F, 1, unit=self.unit)
+                alarm = read.registers[0] 
+                self.closeMotor()
         else:
-            alarm = 64
-            self.closeMotor()
+            print(f"!!! chkAlrm can't read unit {self.unit}")
+            return False
+
         if alarm == 64:
             self.readAlrm()
             self.connected = False
@@ -526,22 +523,27 @@ class MotorControl:
         global TEST
 
         if isinstance(self.client, ModbusException):
-            return True
+            return False
+
         self.connectMotor()
 
-        if self.checkMotor() and not TEST:
-            self.client.write_register(0x7D, 0x80, unit=self.unit)
-            self.client.write_register(0x7D, 0x0, unit=self.unit)
-            self.chkAlrm()
-            self.closeMotor()
-            return True
+        # you can only write registers if the motor is available.
+        if self.checkMotor():
+            if not TEST:
+                self.client.write_register(0x7D, 0x80, unit=self.unit)
+                self.client.write_register(0x7D, 0x0, unit=self.unit)
+                # must close before chkAlrm
+                self.closeMotor()
+                self.chkAlrm()
+            else:
+                self.closeMotor()
+                # must close before chkAlrm
+                self.chkAlrm()
+                TEST = 0
+                return True
         else:
             print("!!! rstAlrm can't connect to unit: ", self.unit)
             return False
-        if TEST:
-            TEST = 0
-            self.chkAlrm()
-            return True
 
     def readAlrm(self):
         """
@@ -551,7 +553,8 @@ class MotorControl:
         """
         global _mode
         unit = self.unit
-
+        alarm = 0
+    
         self.connectMotor()
         if self.checkMotor() and not TEST:
             read = self.client.read_holding_registers(0x0081, 1, unit=unit)
@@ -598,9 +601,12 @@ class MotorControl:
         """
         Loop on reading the motor position until
         the 'unit' motor gets to the target position.
+        Only call this when you're sure the motor is available 
+        because it assumes you can read registers without error 
+        checking
 
         :param: target - motor destination position
-        :return: motor position in user steps, -999 if error
+        :return: motor position in user steps, READERROR if error
         """
 
         global tk
@@ -611,12 +617,12 @@ class MotorControl:
         read = client.read_holding_registers(0x00C7, 1, unit=unit)
         rp = read.registers[0]
         if DBG:
-            print("readDelay IN",target,"pos",rp)
+            print("readDelay IN ", target, "pos",rp)
         delay = (abs(rp - target)) * 1.2 / speed
         ldelay = delay
         
         msg = "Wait " + str(int(10.0 * delay) / 10.0) + " sec"
-        tk.Label(page[unit], font=20, foreground="#FF0000", text=msg).place(x=90, y=20, width=350, height=25)
+        tk.Label(page[unit], font=20, foreground="#FF0000", text=msg).place(x=90, y=0, width=350, height=25)
         
         reps = 0
         speed = self.speed
@@ -645,7 +651,7 @@ class MotorControl:
             read = client.read_holding_registers(0x00C7, 1, unit=unit)
             rp = read.registers[0]
             main.config(cursor="")
-            tk.Label(page[unit], font=20, foreground="#F0F0F0", text=msg).place(x=90, y=20, width=350, height=25)
+            tk.Label(page[unit], font=20, foreground="#F0F0F0", text=msg).place(x=90, y=0, width=350, height=25)
             #e1 = tk.Label(page[unit], font=12, bg="#FFFFFF", text="WAIT", justify='right')
         if DBG:
             print("readDelay OUT",rp)
@@ -657,7 +663,7 @@ class MotorControl:
         """
 		Read the position of the 'unit' motor.
 
-		:Return position or -999 if any exceptions
+		:Return position or READERROR if any exceptions
 		"""
         global tk
         unit = self.unit
@@ -679,7 +685,7 @@ class MotorControl:
                 self.closeMotor()
                 print("!!! Can't read registers from unit ", self.unit)
                 # put up a warning message
-                return -999
+                return READERROR
             
             #upprpos = read.registers[0]
             if DBG:
@@ -691,7 +697,7 @@ class MotorControl:
             self.closeMotor()
         else:
             # warn()
-            return -999
+            return READERROR
 
         self.position = position
     
@@ -777,7 +783,7 @@ class MotorControl:
             msg = "Motor " + str(unit) +" is not available"
             print("!!! sendMotor has an ioException for unit ", self.unit)
             self.closeMotor
-            message(unit,mflag,msg)
+            message(unit, mflag, msg)
             return False
 
         Location[unit] = rp
@@ -1143,7 +1149,6 @@ class LocalIO:
 
         for record in records:
             line = record.split()
-            count = len(line)
             if line[0] == '1':
                 Offset[1] = int(line[2])
                 Zero[1] = int(line[3])
@@ -1182,14 +1187,11 @@ class LocalIO:
         records = fileHandle.readlines()
         fileHandle.close()
 
-        #init_cfg()
-        
         j1 = j2 = j3 = j4 = 0
         t1 = t2 = t3 = t4 = 0
         # parse records into tabs
         for record in records:
             line = record.split()
-            count = len(line)
 
             if line[1] == 'jog':
                 if line[0] == str(1) and not j1:
@@ -1711,8 +1713,8 @@ class MakeTab:
                     name = line[3] + " " + line[4]
                 else:
                     name = line[3]
-                butn="rb" + str(row)
-                butn = tk.Radiobutton(page[1], font=20, text=name, command=partial(M1.setMotor, 1), padx=20,
+                #butn="rb" + str(row)
+                tk.Radiobutton(page[1], font=20, text=name, command=partial(M1.setMotor, 1), padx=20,
                            variable=slide, value=row, anchor='w').place(x=20, y=jogS+20+20*row, width=150, height=25)
                 row = row + 1
 
@@ -1803,10 +1805,10 @@ class MakeTab:
                            variable=grate1, value=row, anchor='w').place(x=20, y=75+20*row, width=150, height=25)
                 row = row + 1
             if line[1] == 'res':
-                Resolution[t] = int(line[2])
+                Resolution[self.unit] = int(line[2])
                 #_res.append[res[t])
             if line[1] == 'ref':
-                Reference[t] = int(line[2])
+                Reference[self.unit] = int(line[2])
                 #_ref[unit] = int(line[2])
 
         row1 = 0; row2 = 0
@@ -1855,9 +1857,9 @@ class MakeTab:
                            variable=grate2, value=row, anchor='w').place(x=20, y=75+20*row, width=150, height=25)
                 row = row + 1
             if line[1] == 'res':
-                Resolution[t] = int(line[2])
+                Resolution[self.unit] = int(line[2])
             if line[1] == 'ref':
-                Reference[t] = int(line[2])
+                Reference[self.unit] = int(line[2])
 
         row1 = 0; row2 = 0
         for line in jog4:
