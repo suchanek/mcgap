@@ -1,5 +1,3 @@
-#
-#
 import tkinter as tk
 from tkinter import *
 from tkinter.filedialog   import askopenfilename
@@ -30,6 +28,7 @@ log = logging.getLogger()
 from pymodbus.client.sync import ModbusSerialClient as ModbusClient
 
 # Define Global Variables
+READERROR = -999 # returned when can't read a motor
 filemenu = 0
 _warn1 = ''
 _mode = 0
@@ -169,7 +168,7 @@ def warn():
 
     b = tk.Button(w, text='QUIT', font=30, width=35, command=exit, anchor=S) 
     b.configure(width=10, activebackground="#BBBBBB")
-    bw = w.create_window(120, 110, anchor=NW, window=b)
+    w.create_window(120, 110, anchor=NW, window=b)
     b.place(x=120,y=110)
     temp.mainloop()
 
@@ -181,7 +180,7 @@ def run():
         page[1] = ttk.Frame(nb)
         B.tablet1()
         p1=M1.readMotor()
-        if not p1:
+        if p1 == READERROR:
             # put up a warning that M1 can't be read...
             print("Can't read unit ", M1.unit)
             msg = f"Motor {M1.unit} is not available"
@@ -200,7 +199,7 @@ def run():
         page[2] = ttk.Frame(nb)
         B.tablet2()
         p2=M2.readMotor()
-        if not p2:
+        if p2 == READERROR:
             # put up a warning that M1 can't be read...
             print("Can't read unit ", M2.unit)
             msg = f"Motor {M2.unit} is not available"
@@ -212,14 +211,14 @@ def run():
             source.set(cmparPos)
     else:
         page[2] = ttk.Frame(nb)
-        msg = f"Motor {M1.unit} is not available"
+        msg = f"Motor {M2.unit} is not available"
         mflag = 1
         message(M2.unit,mflag,msg)
     if M3.connected:
         page[3] = ttk.Frame(nb)
         B.tablet3()
         p3=M3.readMotor()
-        if not p3:
+        if p3 == READERROR:
             # put up a warning that M1 can't be read...
             print("Can't read unit ", M3.unit)
             msg = f"Motor {M3.unit} is not available"
@@ -231,7 +230,7 @@ def run():
             grate1.set(grat1Pos)
     else:
         page[3] = ttk.Frame(nb)
-        msg = f"Motor {M1.unit} is not available"
+        msg = f"Motor {M3.unit} is not available"
         mflag = 1
         message(M3.unit,mflag,msg)
 
@@ -239,10 +238,10 @@ def run():
         page[4] = ttk.Frame(nb)
         B.tablet4()
         p4=M4.readMotor()
-        if not p4:
-            # put up a warning that M1 can't be read...
+        if p4 == READERROR:
+            # put up a warning that M4 can't be read...
             print("Can't read unit ", M4.unit)
-            msg = f"Motor {M1.unit} is not available"
+            msg = f"Motor {M4.unit} is not available"
             mflag = 1
             message(M4.unit,mflag,msg)
         else:
@@ -298,12 +297,12 @@ class MotorControl:
 
         if self.connected:
             if isinstance(self.client, ModbusException):
-                print("checkMotor: Modbus ioexception for unit ", self.unit)
+                print("!!! checkMotor: Modbus ioexception for unit ", self.unit)
                 return False
             # attempt to read a register - if we can't then we have a problem
             read = self.client.read_holding_registers(0x00D7, 1, unit=self.unit)
             if isinstance(read,  ModbusException):
-                print("checkMotor: Modbus ioexception for unit ", self.unit)
+                print("!!! checkMotor: Modbus ioexception for unit ", self.unit)
                 return False
             return True
         else:
@@ -322,8 +321,7 @@ class MotorControl:
             if DBG:
                 print("--- Close succeeded")
         except:
-            if DBG:
-                print("Can't close - null client!")
+            print("Can't close - null client!")
         return
 
     def connectMotor(self):
@@ -616,7 +614,7 @@ class MotorControl:
         ldelay = delay
         
         msg = "Wait " + str(int(10.0 * delay) / 10.0) + " sec"
-        tk.Label(page[unit], font=20, foreground="#FF0000", text=msg).place(x=90, y=20, width=350, height=25)
+        tk.Label(page[unit], font=20, foreground="#FF0000", text=msg).place(x=90, y=0, width=350, height=25)
         
         reps = 0
         speed = self.speed
@@ -645,7 +643,7 @@ class MotorControl:
             read = client.read_holding_registers(0x00C7, 1, unit=unit)
             rp = read.registers[0]
             main.config(cursor="")
-            tk.Label(page[unit], font=20, foreground="#F0F0F0", text=msg).place(x=90, y=20, width=350, height=25)
+            tk.Label(page[unit], font=20, foreground="#F0F0F0", text=msg).place(x=90, y=0, width=350, height=25)
             #e1 = tk.Label(page[unit], font=12, bg="#FFFFFF", text="WAIT", justify='right')
         if DBG:
             print("readDelay OUT",rp)
@@ -1143,7 +1141,6 @@ class LocalIO:
 
         for record in records:
             line = record.split()
-            count = len(line)
             if line[0] == '1':
                 Offset[1] = int(line[2])
                 Zero[1] = int(line[3])
@@ -1182,14 +1179,11 @@ class LocalIO:
         records = fileHandle.readlines()
         fileHandle.close()
 
-        #init_cfg()
-        
         j1 = j2 = j3 = j4 = 0
         t1 = t2 = t3 = t4 = 0
         # parse records into tabs
         for record in records:
             line = record.split()
-            count = len(line)
 
             if line[1] == 'jog':
                 if line[0] == str(1) and not j1:
@@ -1711,8 +1705,8 @@ class MakeTab:
                     name = line[3] + " " + line[4]
                 else:
                     name = line[3]
-                butn="rb" + str(row)
-                butn = tk.Radiobutton(page[1], font=20, text=name, command=partial(M1.setMotor, 1), padx=20,
+                #butn="rb" + str(row)
+                tk.Radiobutton(page[1], font=20, text=name, command=partial(M1.setMotor, 1), padx=20,
                            variable=slide, value=row, anchor='w').place(x=20, y=jogS+20+20*row, width=150, height=25)
                 row = row + 1
 
@@ -1803,10 +1797,10 @@ class MakeTab:
                            variable=grate1, value=row, anchor='w').place(x=20, y=75+20*row, width=150, height=25)
                 row = row + 1
             if line[1] == 'res':
-                Resolution[t] = int(line[2])
+                Resolution[self.unit] = int(line[2])
                 #_res.append[res[t])
             if line[1] == 'ref':
-                Reference[t] = int(line[2])
+                Reference[self.unit] = int(line[2])
                 #_ref[unit] = int(line[2])
 
         row1 = 0; row2 = 0
@@ -1855,9 +1849,9 @@ class MakeTab:
                            variable=grate2, value=row, anchor='w').place(x=20, y=75+20*row, width=150, height=25)
                 row = row + 1
             if line[1] == 'res':
-                Resolution[t] = int(line[2])
+                Resolution[self.unit] = int(line[2])
             if line[1] == 'ref':
-                Reference[t] = int(line[2])
+                Reference[self.unit] = int(line[2])
 
         row1 = 0; row2 = 0
         for line in jog4:
