@@ -276,8 +276,6 @@ class MotorControl:
         self.client = ModbusClient(method='rtu')
         self.target = 0 # targeted step location
         self.connected = False
-        if DBG:
-            print("Client:", self.client)
 
     def checkMotor(self):
         """
@@ -326,13 +324,9 @@ class MotorControl:
 		"""
         res = 0
         if self.connected:
-            if DBG:
-                print("-- Already Connected?")
             return True
 
         port = port485
-        #port = '/dev/cu.EGSiPhone-WirelessiAP'
-
         unit = self.unit
 
         self.client = ModbusClient(method='rtu',
@@ -351,14 +345,12 @@ class MotorControl:
             
         if DBG:
             print(".. connecting..")
-        # this throws an error when port not available
         try:
             res = self.client.connect()
         except:
             res = 0
             print("Connection error!")
 
-        TEST2 = 0
         if TEST:
             res = 1
             self.connected = True
@@ -388,8 +380,8 @@ class MotorControl:
 
         if DBG:
             print("jogMotor", unit, delta)
-        if DBG:
             print("CLIENT",unit,self.client)
+
         self.connectMotor()
         if self.outOfRange(delta):
             if DBG:
@@ -468,7 +460,7 @@ class MotorControl:
         self.position = rp
         if DBG:
             print("JogHERE",unit,jogPosition,"=",rp)
-        if jogPosition != rp and client:
+        if jogPosition != rp and self.client:
             if DBG:
                 print("???????",jogPosition,rp)
 
@@ -567,8 +559,8 @@ class MotorControl:
         Loop on reading the motor position until
         the 'unit' motor gets to the target position.
 
-        :param target: motor destination position
-        :return: motor position in user steps.
+        :param: target - motor destination position
+        :return: motor position in user steps, -999 if error
         """
 
         global tk
@@ -625,7 +617,7 @@ class MotorControl:
         """
 		Read the position of the 'unit' motor.
 
-		:return: motor position in user steps.
+		:Return position or -999 if any exceptions
 		"""
         global tk
         unit = self.unit
@@ -647,18 +639,19 @@ class MotorControl:
                 self.closeMotor()
                 print("!!! Can't read registers from unit ", self.unit)
                 # put up a warning message
-                return
+                return -999
             
             #upprpos = read.registers[0]
             if DBG:
-                print("READ MOTOR", unit, "LOC", position, "POS", self.position)
+                print(f"Read motor {unit} Loc: {position} Pos: {self.position}")
+
             read = self.client.read_holding_registers(0x00C7, 1, unit=unit)
             log.debug(read)
             position = read.registers[0] 
             self.closeMotor()
         else:
             # warn()
-            return
+            return -999
 
         self.position = position
     
@@ -673,13 +666,14 @@ class MotorControl:
         location = T.getLabel(self.unit)
         self.target = location
         self.sendMotor()
-        if DBG:
+        if DBG2:
             print("GOT LOCATION",location)
 
+    # major rework, now includes better exception handling
     def sendMotor(self):
         """
         Send the 'unit' motor to the target location.
-        :return: motor position in user steps.
+        :return True if success, False otherwise (exception errors)
         """
         location = self.target
         unit = self.unit
@@ -687,23 +681,23 @@ class MotorControl:
         if DBG:
             print("sendMotor", unit, location)
 
-        if TEST:
-            pos = 1000
-        else:
-            pos = self.readMotor()
-        
-        delta = location - pos
         self.connectMotor()
-      
-        if self.outOfRange(delta):
-            if DBG:
-                print("SEND IS OUT OF RANGE RETURN")
-            self.closeMotor()
-            return
+
+        if self.checkMotor():    
+            if TEST:
+                pos = 1000
+            else:
+                pos = self.readMotor()
         
-        if self.checkMotor():
+            delta = location - pos
+            if self.outOfRange(delta):
+                if DBG:
+                    print("SEND IS OUT OF RANGE. RETURN")
+                self.closeMotor()
+                return False
+
             setPosition = int(location) 
-            if DBG:
+            if DBG2:
                 print("SEND WRITE TRY ",unit," TO ",setPosition)
             self.client.write_register(0x7D, 0x20, unit=unit)
             self.client.write_register(0x1801, 1, unit=unit)
@@ -739,13 +733,12 @@ class MotorControl:
                 # warn()
         else:
             # we have an exception!
-            rp = self.target
             mflag = 1
             msg = "Motor " + str(unit) +" is not available"
-            print("sendMotor has an ioException for unit ", self.unit)
+            print("!!! sendMotor has an ioException for unit ", self.unit)
             self.closeMotor
             message(unit,mflag,msg)
-            return
+            return False
 
         Location[unit] = rp
         I.setEntry(unit, rp)
@@ -754,8 +747,8 @@ class MotorControl:
         self.position = rp
         if DBG:
             print("WRITE",unit, self.position,"SPD",Speed[unit])
+        return True
 
-    # this really doesn't move the motor - it only sets its internal location
     def setMotor(self, tab):
         """
 		Set the motor target position using the location for the selected RadioButton.
@@ -823,7 +816,7 @@ class InputControl:
         if not val:
             return
   
-        if DBG:
+        if DBG2:
             print("CALLBACK",t,val)
         try:
             int(val)
@@ -967,7 +960,7 @@ class InputControl:
         global e
 
         val = str(int(val))
-        if DBG:
+        if DBG2:
             print("SETENTRY target location", t, "VAL", val)
 
         if t < 3:
@@ -1456,11 +1449,8 @@ class TabControl:
 
         if unit == 1:
             position = M1.readMotor()
-            if DBG:
-                print('unit',unit,tab1,'read motor',position)
             closest = T.getClosest(unit, position, tab1)
             tmp1[closest][2] = position
-            #print("tmp1",tmp1)
         if unit == 2:
             position = M2.readMotor()
             closest = T.getClosest(unit, position, tab2)
@@ -1471,7 +1461,7 @@ class TabControl:
             position = M4.readMotor()
             closest = T.getClosest(unit, position, tab4)
 
-        if DBG:
+        if DBG2:
             print("GET Radio --- ",unit,closest,position)
         return closest
 
@@ -1486,14 +1476,15 @@ class TabControl:
         """
 
         global _warn1
-        #global tmp1, tmp2, tmp3, tmp4
-        if DBG:
+
+        if DBG2:
             print(tablist)
 
         list_of_numbers = [int(i[2]) for i in tablist]
         closest = min(enumerate(list_of_numbers), key=lambda ix: (abs(ix[1] - position)))[0]
-        nearest = list_of_numbers[closest]
-        difference = position - nearest
+        # nearest = list_of_numbers[closest]
+        # difference = position - nearest
+        '''
         if abs(difference) > 0 and unit < 3:
             message = "Motor " + str(unit) + " at " + str(position) + " is off " + str(difference) + " steps from " + str(nearest) + ". Re-click selection."
             tk.Label(page[unit], font=20, foreground="#EE0000", text=message).place(x=50, y=240, width=450, height=25)
@@ -1506,7 +1497,8 @@ class TabControl:
         if abs(difference) > 0:
             message = "Notice: Motor is off " + str(difference) + " steps. Click selection."
             _warn1 = message
-
+        '''
+    
         return closest
 
     def resetTab(self):
