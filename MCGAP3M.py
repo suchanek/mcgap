@@ -507,11 +507,14 @@ class MotorControl:
         if isinstance(self.client, ModbusException):
             return True
 
-        if self.client and not TEST:
+        self.connectMotor()
+        if self.checkMotor() and not TEST:
             read = self.client.read_holding_registers(0x007F, 1, unit=self.unit)
             alarm = read.registers[0] 
+            self.closeMotor()
         else:
             alarm = 64
+            self.closeMotor()
         if alarm == 64:
             self.readAlrm()
             self.connected = False
@@ -556,7 +559,7 @@ class MotorControl:
             self.closeMotor()
         else:
             alarm = 99
-        
+            self.closeMotor()
 
         b1 = tk.Button(main, text="Alarm", font=26, fg='red', bg='white', command=partial(self.seeAlrm, alarm), pady=2, height=30, width=70, relief='ridge')
         b1.place(x=10, y=30, width=70, height=30)
@@ -582,7 +585,7 @@ class MotorControl:
         positionRight = int(temp.winfo_screenwidth()/2 - windowWidth/1)
         positionDown = int(temp.winfo_screenheight()/2 - windowHeight/2)
         temp.geometry("+{}+{}".format(positionRight, positionDown))
-        if self.client and self.connected or TEST:
+        if self.checkMotor() and self.connected or TEST:
             b = tk.Button(w, text='Reset', font=30, width=30, command = self.rstAlrm, anchor = S) 
         else:
             b = tk.Button(w, text='Okay', font=30, width=30, command = temp.destroy, anchor = S) 
