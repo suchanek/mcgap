@@ -1481,7 +1481,7 @@ class TabControl:
             print(tablist)
 
         list_of_numbers = [int(i[2]) for i in tablist]
-        closest = min(enumerate(list_of_numbers), key=lambda ix: (abs(ix[1] - position)))[0]
+         closest = min(enumerate(list_of_numbers), key=lambda ix: (abs(ix[1] - position)))[0]
         # nearest = list_of_numbers[closest]
         # difference = position - nearest
         '''
