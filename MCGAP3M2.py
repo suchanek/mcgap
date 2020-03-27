@@ -352,8 +352,14 @@ class MotorControl:
             
         if DBG:
             print(".. connecting..")
-        
-        res = self.client.connect()
+        try:
+            res = self.client.connect()
+        except:
+            res = 0
+            self.connected = False
+            self.client = 0
+            print("!!! Cannot connect to unit {self.unit}")
+            return False
 
         if TEST:
             res = 1
