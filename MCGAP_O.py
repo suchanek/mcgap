@@ -543,7 +543,7 @@ class MotorControl:
             #    tk.Label(page[unit], font='Ariel 13' , foreground="C0C0C0", text=msg).place(x=50, y=240, width=350, height=25)
 
             return flag
-    
+  
     def chkAlrm(self):
         read = 0
         if isinstance(self.client, ModbusException):
