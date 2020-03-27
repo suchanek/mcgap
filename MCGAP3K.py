@@ -246,12 +246,19 @@ class MotorControl:
 
     def checkMotor(self):
         """
-        Return true if the motor is connected and client is not a modbusioException
+        Return true if the motor is connected and client is not a modbusioException,
+        and true if we can read a register from the unit
         """
+        read = 0
 
         if self.connected:
             if isinstance(self.client, ModbusException):
-                print("Modbus ioexception for: ", self.unit)
+                print("checkMotor: Modbus ioexception for unit ", self.unit)
+                return False
+            # attempt to read a register - if we can't then we have a problem
+            read = self.client.read_holding_registers(0x00D7, 1, unit=self.unit)
+            if isinstance(read,  ModbusException):
+                print("checkMotor: Modbus ioexception for unit ", self.unit)
                 return False
             return True
         else:
@@ -268,7 +275,7 @@ class MotorControl:
         try:
             self.client.close()
             if DBG:
-                print("CLOSE succeeded")
+                print("--- Close succeeded")
         except:
             if DBG:
                 print("Can't close - null client!")
@@ -289,7 +296,7 @@ class MotorControl:
             return True
 
         port = port485
-        port = '/dev/cu.EGSiPhone-WirelessiAP'
+        #port = '/dev/cu.EGSiPhone-WirelessiAP'
 
         unit = self.unit
 
@@ -601,8 +608,13 @@ class MotorControl:
 
         if self.checkMotor():
             read = self.client.read_holding_registers(0x00D7, 1, unit=unit)
-            if DBG:
-                print(read)
+            if isinstance(read, ModbusException):
+                self.connected = False
+                self.closeMotor()
+                print("!!! Can't read registers from unit ", self.unit)
+                # put up a warning message
+                return
+            
             #upprpos = read.registers[0]
             if DBG:
                 print("READ MOTOR", unit, "LOC", position, "POS", self.position)

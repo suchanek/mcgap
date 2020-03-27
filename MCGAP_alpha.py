@@ -1,5 +1,3 @@
-#
-#
 import tkinter as tk
 from tkinter import *
 from tkinter.filedialog   import askopenfilename
@@ -30,6 +28,7 @@ log = logging.getLogger()
 from pymodbus.client.sync import ModbusSerialClient as ModbusClient
 
 # Define Global Variables
+READERROR = -999 # returned when can't read a motor
 filemenu = 0
 _warn1 = ''
 _mode = 0
@@ -127,26 +126,28 @@ def menu():
     global filemenu
 
     filemenu = tk.Menu(menubar, tearoff=0)
-    filemenu.add_command(label="Open User Settings", command=F.readUser)
-    filemenu.add_command(label="Save User Settings", command=F.saveUser)
-    #filemenu.add_command(label=limitSet + " Limits", command=T.setLimits)
-    #filemenu.add_command(label="Reset to Prev Tablets", command=T.resetTab)
-    filemenu.add_command(label="Reset to Orig Defaults", command=F.readDflt)
-    filemenu.add_command(label="Configure Motors", command=F.getPassword)
+    filemenu.add_command(label="Open User Settings", font='Ariel 13', command=F.readUser)
+    filemenu.add_command(label="Save User Settings", font='Ariel 13', command=F.saveUser)
+    #filemenu.add_command(label=limitSet + " Limits", font='Ariel 13', command=T.setLimits)
+    #filemenu.add_command(label="Reset to Prev Tablets", font='Ariel 13', command=T.resetTab)
+    filemenu.add_command(label="Reset to Orig Defaults", font='Ariel 13', command=F.readDflt)
+    filemenu.add_command(label="Configure Motors", font='Ariel 13', command=F.getPassword)
     filemenu.add_separator()
-    filemenu.add_command(label="Exit", command=main.quit)
+    filemenu.add_command(label="Exit", font='Ariel 13', command=main.quit)
     menubar.add_cascade(label="File", menu=filemenu)
 
 def message(unit, mflag, msg):
+    global page
+
     if mflag == 1:
         if DBG2:
             print(unit,"MESSAGE:",msg,">",page[unit],"<")
-        tk.Label(page[unit], font=20, foreground="#000000", text=msg).place(x=100, y=10, width=350, height=25)
+        tk.Label(page[unit], font='Ariel 13' , foreground="#000000", text=msg).place(x=100, y=10, width=350, height=25)
         mflag = 0
     else:
         if DBG2:
             print(unit,"MESSAGE:",msg,">",page[unit],"<")
-        tk.Label(page[unit], font=20, foreground="#F0F0F0", text=msg).place(x=100, y=10, width=350, height=25)
+        tk.Label(page[unit], font='Ariel 13' , foreground="#F0F0F0", text=msg).place(x=100, y=10, width=350, height=25)
 
 
 def warn():
@@ -156,9 +157,9 @@ def warn():
     temp.wm_title('WARNING')
     w = Canvas(temp, width=340, height=150)
     w.pack()
-    w.create_text(170,15,text='WARNING:',font=20,fill="#FF0000")
-    w.create_text(170,45,text=warn2,font=20)
-    w.create_text(170,75,text=warn3,font=20)
+    w.create_text(170,15,text='WARNING:',font='Ariel 13' ,fill="#FF0000")
+    w.create_text(170,45,text=warn2,font='Ariel 13' )
+    w.create_text(170,75,text=warn3,font='Ariel 13' )
     windowWidth = temp.winfo_reqwidth()
     windowHeight = temp.winfo_reqheight()
     positionRight = int(temp.winfo_screenwidth()/2 - windowWidth/1)
@@ -167,9 +168,9 @@ def warn():
     # temp.geometry("+{}+{}".format(positionRight, positionDown))
     temp.geometry(f'+{positionRight}+{positionDown}')
 
-    b = tk.Button(w, text='QUIT', font=30, width=35, command=exit, anchor=S) 
+    b = tk.Button(w, text='QUIT', font='Ariel 15' , width=35, command=exit, anchor=S) 
     b.configure(width=10, activebackground="#BBBBBB")
-    bw = w.create_window(120, 110, anchor=NW, window=b)
+    w.create_window(120, 110, anchor=NW, window=b)
     b.place(x=120,y=110)
     temp.mainloop()
 
@@ -177,16 +178,17 @@ def warn():
 
 def run():
     global nb
+    mflag = 1
+
     if M1.connected:
         page[1] = ttk.Frame(nb)
         B.tablet1()
         p1=M1.readMotor()
-        if not p1:
+        if p1 == READERROR:
             # put up a warning that M1 can't be read...
             print("Can't read unit ", M1.unit)
             msg = f"Motor {M1.unit} is not available"
-            mflag = 1
-            message(M1.unit,mflag,msg)
+            message(M1.unit, mflag, msg)
         else:
             I.setEntry(1, p1)
             slidePos = T.getRadioButn(1, tab1, page[1])
@@ -194,57 +196,52 @@ def run():
     else:
         page[1] = ttk.Frame(nb)
         msg = f"Motor {M1.unit} is not available"
-        mflag = 1
-        message(M1.unit,mflag,msg)
+        message(M1.unit, mflag, msg)
     if M2.connected:
         page[2] = ttk.Frame(nb)
         B.tablet2()
         p2=M2.readMotor()
-        if not p2:
+        if p2 == READERROR:
             # put up a warning that M1 can't be read...
             print("Can't read unit ", M2.unit)
             msg = f"Motor {M2.unit} is not available"
-            mflag = 1
-            message(M2.unit,mflag,msg)
+            message(M2.unit, mflag, msg)
         else:
             I.setEntry(2 ,p2)
             cmparPos = T.getRadioButn(2, tab2, page[2])
             source.set(cmparPos)
     else:
         page[2] = ttk.Frame(nb)
-        msg = f"Motor {M1.unit} is not available"
-        mflag = 1
-        message(M2.unit,mflag,msg)
+        msg = f"Motor {M2.unit} is not available"
+        message(M2.unit, mflag, msg)
     if M3.connected:
         page[3] = ttk.Frame(nb)
         B.tablet3()
         p3=M3.readMotor()
-        if not p3:
+        if p3 == READERROR:
             # put up a warning that M1 can't be read...
             print("Can't read unit ", M3.unit)
             msg = f"Motor {M3.unit} is not available"
-            mflag = 1
-            message(M3.unit,mflag,msg)
+            message(M3.unit, mflag, msg)
         else:
             I.setEntry(3, p3)
             grat1Pos = T.getRadioButn(3, tab3, page[3])
             grate1.set(grat1Pos)
     else:
         page[3] = ttk.Frame(nb)
-        msg = f"Motor {M1.unit} is not available"
-        mflag = 1
-        message(M3.unit,mflag,msg)
+        msg = f"Motor {M3.unit} is not available"
+        message(M3.unit, mflag, msg)
 
     if M4.connected:
         page[4] = ttk.Frame(nb)
         B.tablet4()
         p4=M4.readMotor()
-        if not p4:
-            # put up a warning that M1 can't be read...
+        if p4 == READERROR:
+            # put up a warning that M4 can't be read...
             print("Can't read unit ", M4.unit)
-            msg = f"Motor {M1.unit} is not available"
+            msg = f"Motor {M4.unit} is not available"
             mflag = 1
-            message(M4.unit,mflag,msg)
+            message(M4.unit, mflag, msg)
         else:
             I.setEntry(4, p4)
             grat2Pos = T.getRadioButn(4, tab4, page[4])
@@ -253,7 +250,18 @@ def run():
         page[4] = ttk.Frame(nb)
         B.warntab(4)
 
-#def update():
+def updateTabs():
+    """
+    Forget all tabs and restore with new settings
+    """
+    global page
+    
+    nb.forget(page[1])
+    nb.forget(page[2])
+    nb.forget(page[3])
+    nb.forget(page[4])
+    page = ["page[0]", "page[1]", "page[2]", "page[3]", "page[4]"]
+    run()
 
 class MotorControl:
     """
@@ -286,12 +294,12 @@ class MotorControl:
 
         if self.connected:
             if isinstance(self.client, ModbusException):
-                print("checkMotor: Modbus ioexception for unit ", self.unit)
+                print("!!! checkMotor: Modbus ioexception for unit ", self.unit)
                 return False
             # attempt to read a register - if we can't then we have a problem
             read = self.client.read_holding_registers(0x00D7, 1, unit=self.unit)
             if isinstance(read,  ModbusException):
-                print("checkMotor: Modbus ioexception for unit ", self.unit)
+                print("!!! checkMotor: Modbus ioexception for unit ", self.unit)
                 return False
             return True
         else:
@@ -310,8 +318,7 @@ class MotorControl:
             if DBG:
                 print("--- Close succeeded")
         except:
-            if DBG:
-                print("Can't close - null client!")
+            print("!!! Can't close - exception thrown!")
         return
 
     def connectMotor(self):
@@ -345,11 +352,8 @@ class MotorControl:
             
         if DBG:
             print(".. connecting..")
-        try:
-            res = self.client.connect()
-        except:
-            res = 0
-            print("Connection error!")
+        
+        res = self.client.connect()
 
         if TEST:
             res = 1
@@ -432,12 +436,12 @@ class MotorControl:
                pass
             # warn()
         else:
-            rp = self.target
+            rp = self.position
             jogPosition = int(delta) + rp
             mflag = 1
             msg = "Motor " + str(unit) +" is not available"
             print("!!! jogMotor has an ioException for unit ", self.unit)
-            message(unit,mflag,msg)
+            message(unit, mflag, msg)
             return
 
         if unit == 1:
@@ -476,35 +480,72 @@ class MotorControl:
             msg = str(pos + int(delta)) + " is Out of Range"
             flag = 0
             if pos + int(delta) < lower:
+                # we update with actual pos, not lower since that's not right.
+                Location[unit] = pos
                 flag = 1
 
             if pos + int(delta) > upper:
                 flag = 2
-                # potential side effect - why do this?
-                Location[unit] = Upper[unit]
+                # we update with actual pos, not lower since that's not right.
+                Location[unit] = pos
             if flag > 0:
-                tk.Label(page[unit], font=20, foreground="#000000", text=msg).place(x=50, y=240, width=350, height=25)
+                tk.Label(page[unit], font='Ariel 13' , foreground="#000000", text=msg).place(x=50, y=240, width=350, height=25)
             #else:
-            #    tk.Label(page[unit], font=20, foreground="C0C0C0", text=msg).place(x=50, y=240, width=350, height=25)
+            #    tk.Label(page[unit], font='Ariel 13' , foreground="C0C0C0", text=msg).place(x=50, y=240, width=350, height=25)
 
             return flag
     
     def chkAlrm(self):
         read = 0
-
         if isinstance(self.client, ModbusException):
             return True
-
-        if self.client and not TEST:
-            read = self.client.read_holding_registers(0x007F, 1, unit=self.unit)
-            alarm = read.registers[0] 
+        # any time we read or write registers we have to be connected first
+        self.connectMotor()
+        if self.checkMotor():
+            if TEST:
+                alarm = 64
+                self.closeMotor()
+            else:
+                # should check for exception here
+                read = self.client.read_holding_registers(0x007F, 1, unit=self.unit)
+                alarm = read.registers[0] 
+                self.closeMotor()
         else:
-            alarm = 64
+            print(f"!!! chkAlrm can't read unit {self.unit}")
+            return False
+
         if alarm == 64:
             self.readAlrm()
             self.connected = False
         else:
             return 
+
+    def rstAlrm(self):
+        read = 0
+        global TEST
+
+        if isinstance(self.client, ModbusException):
+            return False
+
+        self.connectMotor()
+
+        # you can only write registers if the motor is available.
+        if self.checkMotor():
+            if not TEST:
+                self.client.write_register(0x7D, 0x80, unit=self.unit)
+                self.client.write_register(0x7D, 0x0, unit=self.unit)
+                # must close before chkAlrm
+                self.closeMotor()
+                self.chkAlrm()
+            else:
+                self.closeMotor()
+                # must close before chkAlrm
+                self.chkAlrm()
+                TEST = 0
+                return True
+        else:
+            print("!!! rstAlrm can't connect to unit: ", self.unit)
+            return False
 
     def readAlrm(self):
         """
@@ -514,18 +555,20 @@ class MotorControl:
         """
         global _mode
         unit = self.unit
-
-        if self.connectMotor() and not TEST:
+        alarm = 0
+    
+        self.connectMotor()
+        if self.checkMotor() and not TEST:
             read = self.client.read_holding_registers(0x0081, 1, unit=unit)
             alarm = read.registers[0]
             self.closeMotor()
         else:
             alarm = 99
-        
+            self.closeMotor()
 
         b1 = tk.Button(main, text="Alarm", font=26, fg='red', bg='white', command=partial(self.seeAlrm, alarm), pady=2, height=30, width=70, relief='ridge')
         b1.place(x=10, y=30, width=70, height=30)
-        return
+        return alarm
         
     def seeAlrm(self, error):
         warn2 = "Motor " + str(self.unit) + " is NOT available."
@@ -538,19 +581,21 @@ class MotorControl:
         temp.wm_title('ALARM')
         w = Canvas(temp, width=340, height=150)
         w.pack()
-        w.create_text(170,15,text='ERROR:',font=20,fill="#FF0000")
-        w.create_text(170,45,text=warn2,font=20)
-        w.create_text(170,70,text=warn3,font=20)
-        w.create_text(170,95,text=warn4,font=20)
+        w.create_text(170,15,text='ERROR:',font='Ariel 13' ,fill="#FF0000")
+        w.create_text(170,45,text=warn2,font='Ariel 13' )
+        w.create_text(170,70,text=warn3,font='Ariel 13' )
+        w.create_text(170,95,text=warn4,font='Ariel 13' )
         windowWidth = temp.winfo_reqwidth()
         windowHeight = temp.winfo_reqheight()
         positionRight = int(temp.winfo_screenwidth()/2 - windowWidth/1)
-        positionDown = int(temp.winfo_screenheight()/2 - windowHeight/1)
+        positionDown = int(temp.winfo_screenheight()/2 - windowHeight/2)
         temp.geometry("+{}+{}".format(positionRight, positionDown))
-        b = tk.Button(w, text='Okay', font=30, width=30, command = temp.destroy, anchor = S) 
+        if self.checkMotor() and self.connected or TEST:
+            b = tk.Button(w, text='Reset', font='Ariel 15' , width=30, command = self.rstAlrm, anchor = S) 
+        else:
+            b = tk.Button(w, text='Okay', font='Ariel 15' , width=30, command = temp.destroy, anchor = S) 
         b.configure(width = 10, activebackground = "#BBBBBB")
-        bw = w.create_window(120, 110, anchor=NW, window=b)
-        b.place(x=120,y=110)
+        b.place(x=120,y=120)
         temp.mainloop()
         temp.destroy
 
@@ -558,9 +603,12 @@ class MotorControl:
         """
         Loop on reading the motor position until
         the 'unit' motor gets to the target position.
+        Only call this when you're sure the motor is available 
+        because it assumes you can read registers without error 
+        checking
 
         :param: target - motor destination position
-        :return: motor position in user steps, -999 if error
+        :return: motor position in user steps, READERROR if error
         """
 
         global tk
@@ -571,12 +619,14 @@ class MotorControl:
         read = client.read_holding_registers(0x00C7, 1, unit=unit)
         rp = read.registers[0]
         if DBG:
-            print("readDelay IN",target,"pos",rp)
+            print("readDelay IN ", target, "pos",rp)
         delay = (abs(rp - target)) * 1.2 / speed
         ldelay = delay
         
-        msg = "Wait " + str(int(10.0 * delay) / 10.0) + " sec"
-        tk.Label(page[unit], font=20, foreground="#FF0000", text=msg).place(x=90, y=20, width=350, height=25)
+        #msg = "Wait " + str(int(10.0 * delay) / 10.0) + " sec"
+        msg = f"Wait {delay} sec"
+
+        tk.Label(page[unit], font='Ariel 13' , foreground="#FF0000", text=msg).place(x=90, y=10, width=350, height=25)
         
         reps = 0
         speed = self.speed
@@ -605,8 +655,8 @@ class MotorControl:
             read = client.read_holding_registers(0x00C7, 1, unit=unit)
             rp = read.registers[0]
             main.config(cursor="")
-            tk.Label(page[unit], font=20, foreground="#F0F0F0", text=msg).place(x=90, y=20, width=350, height=25)
-            #e1 = tk.Label(page[unit], font=12, bg="#FFFFFF", text="WAIT", justify='right')
+
+        tk.Label(page[unit], font='Ariel 13' , foreground="#F0F0F0", text=msg).place(x=90, y=10, width=350, height=25)
         if DBG:
             print("readDelay OUT",rp)
         self.position = rp
@@ -617,7 +667,7 @@ class MotorControl:
         """
 		Read the position of the 'unit' motor.
 
-		:Return position or -999 if any exceptions
+		:Return position or READERROR if any exceptions
 		"""
         global tk
         unit = self.unit
@@ -639,7 +689,7 @@ class MotorControl:
                 self.closeMotor()
                 print("!!! Can't read registers from unit ", self.unit)
                 # put up a warning message
-                return -999
+                return READERROR
             
             #upprpos = read.registers[0]
             if DBG:
@@ -651,7 +701,7 @@ class MotorControl:
             self.closeMotor()
         else:
             # warn()
-            return -999
+            return READERROR
 
         self.position = position
     
@@ -737,7 +787,7 @@ class MotorControl:
             msg = "Motor " + str(unit) +" is not available"
             print("!!! sendMotor has an ioException for unit ", self.unit)
             self.closeMotor
-            message(unit,mflag,msg)
+            message(unit, mflag, msg)
             return False
 
         Location[unit] = rp
@@ -931,7 +981,7 @@ class InputControl:
                 str1.set(str(loc))
                 str1.trace("w", lambda name, index, mode, sv=str1: I.callback(str1, t, 205, 145))
             # ANGLE DISPLAY WINDOW. "Label" sets x, y
-                e1 = tk.Label(page[t], font=12, bg="#FFFFFF", text=st, justify='right')
+                e1 = tk.Label(page[t], font='Ariel 12', bg="#FFFFFF", text=st, justify='right')
                 e1.place(x=x, y=y-50, width=80, height=20)
 
 
@@ -967,14 +1017,14 @@ class InputControl:
             strv = tk.StringVar()
             strv.set(str(val))
             strv.trace("w", lambda name, index, mode, sv=strv: I.callback(strv, t, 215, 105))
-            e[t] = tk.Entry(page[t], font=12, textvariable=strv, bg="#FFFFFF", validate="focusout",
+            e[t] = tk.Entry(page[t], font='Ariel 12', textvariable=strv, bg="#FFFFFF", validate="focusout",
                             validatecommand=I.callback(strv, t, 215, 105), justify='right')
             e[t].place(x=245, y=175, width=60, height=20)
         if t > 2:
             str1 = tk.StringVar()
             str1.set(str(val))
             str1.trace("w", lambda name, index, mode, sv=str1: I.callback(str1, t, 200, 100))
-            e[t] = tk.Entry(page[t], font=12, textvariable=str1, bg="#FFFFFF", validate="focusout",
+            e[t] = tk.Entry(page[t], font='Ariel 12', textvariable=str1, bg="#FFFFFF", validate="focusout",
                             validatecommand=I.callback(str1, t, 200, 100), justify='right')
             e[t].place(x=210, y=195, width=60, height=20)
 
@@ -996,35 +1046,71 @@ class LocalIO:
         """
         # filename = askopenfilename(initialdir="./", title="Select file",
         #                                             filetypes=(("default files", "*.dft"), ("all files", "*.*")))
-        global pos1, pos2, pos3, pos4
+        global tab1, tab2, tab3, tab4
         global tmp1, tmp2, tmp3, tmp4
+        global pos1, pos2, pos3, pos4
+        global jog1, jog2, jog3, jog4
 
         filename = DFLT_POSIX
         fileHandle = open(filename, "r")
         records = fileHandle.readlines()
         fileHandle.close()
 
+        j1 = j2 = j3 = j4 = 0
+        t1 = t2 = t3 = t4 = 0
         for record in records:
             line = record.split()
             if line[1] == 'jog':
-                if line[0] == str(1):
+                if line[0] == str(1) and not j1:
+                    j1 = 1
+                    jog1 = []
+                if line[0] == str(2) and not j2:
+                    j2 = 1
+                    jog2 = []
+                if line[0] == str(3) and not j3:
+                    j3 = 1
+                    jog3 = []
+                if line[0] == str(4) and not j4:
+                    j4 = 1
+                    jog4 = []
+                if line[0] == str(1) and j1:
                     jog1.append(line)
-                if line[0] == str(2):
+                if line[0] == str(2) and j2:
                     jog2.append(line)
-                if line[0] == str(3):
+                if line[0] == str(3) and j3:
                     jog3.append(line)
-                if line[0] == str(4):
+                if line[0] == str(4) and j4:
                     jog4.append(line)
             else:
                 if line[1] != 'res' and line[1] != 'ref':
-                    if line[0] == str(1):
+                    if line[0] == str(1) and not t1:
+                        t1 = 1
+                        tab1 = []
+                        tmp1 = []
+                    if line[0] == str(2) and not t2:
+                        t2 = 1
+                        tab2 = []
+                        tmp2 = []
+                    if line[0] == str(3) and not t3:
+                        t3 = 1
+                        tab3 = []
+                        tmp3 = []
+                    if line[0] == str(4) and not t4:
+                        t4 = 1
+                        tab4 = []
+                        tmp4 = []
+                    if line[0] == str(1) and t1:
                         tab1.append(line)
-                    if line[0] == str(2):
+                        tmp1.append(line)
+                    if line[0] == str(2) and t2:
                         tab2.append(line)
-                    if line[0] == str(3):
+                        tmp2.append(line)
+                    if line[0] == str(3) and t3:
                         tab3.append(line)
-                    if line[0] == str(4):
+                        tmp3.append(line)
+                    if line[0] == str(4) and t4:
                         tab4.append(line)
+                        tmp4.append(line)
                 if line[1] == 'ref':
                     if line[0] == str(1):
                         Reference[1] = int(line[2])
@@ -1067,7 +1153,6 @@ class LocalIO:
 
         for record in records:
             line = record.split()
-            count = len(line)
             if line[0] == '1':
                 Offset[1] = int(line[2])
                 Zero[1] = int(line[3])
@@ -1099,45 +1184,69 @@ class LocalIO:
         global tab1, tab2, tab3, tab4
         global tmp1, tmp2, tmp3, tmp4
         global pos1, pos2, pos3, pos4
+        global jog1, jog2, jog3, jog4
 
         # read whole file
         fileHandle = open(filename, "r")
         records = fileHandle.readlines()
         fileHandle.close()
 
-        #init_cfg()
-        del tab1[:]
-        del tab2[:]
-        del tab3[:]
-        del tab4[:]
-        del tmp1[:]
-        del tmp2[:]
-        del tmp3[:]
-        del tmp4[:]
-
+        j1 = j2 = j3 = j4 = 0
+        t1 = t2 = t3 = t4 = 0
         # parse records into tabs
         for record in records:
             line = record.split()
-            count = len(line)
 
             if line[1] == 'jog':
-                if line[0] == str(1):
+                if line[0] == str(1) and not j1:
+                    j1 = 1
+                    jog1 = []
+                if line[0] == str(2) and not j2:
+                    j2 = 1
+                    jog2 = []
+                if line[0] == str(3) and not j3:
+                    j3 = 1
+                    jog3 = []
+                if line[0] == str(4) and not j4:
+                    j4 = 1
+                    jog4 = []
+                if line[0] == str(1) and j1:
                     jog1.append(line)
-                if line[0] == str(2):
+                if line[0] == str(2) and j2:
                     jog2.append(line)
-                if line[0] == str(3):
+                if line[0] == str(3) and j3:
                     jog3.append(line)
-                if line[0] == str(4):
+                if line[0] == str(4) and j4:
                     jog4.append(line)
             else:
                 if line[1] != 'res' and line[1] != 'ref':
-                    if line[0] == str(1):
+                    if line[0] == str(1) and not t1:
+                        t1 = 1
+                        tab1 = []
+                        tmp1 = []
+                    if line[0] == str(2) and not t2:
+                        t2 = 1
+                        tab2 = []
+                        tmp2 = []
+                    if line[0] == str(3) and not t3:
+                        t3 = 1
+                        tab3 = []
+                        tmp3 = []
+                    if line[0] == str(4) and not t4:
+                        t4 = 1
+                        tab4 = []
+                        tmp4 = []
+                    if line[0] == str(1) and t1:
+                        tab1.append(line)
                         tmp1.append(line)
-                    if line[0] == str(2):
+                    if line[0] == str(2) and t2:
+                        tab2.append(line)
                         tmp2.append(line)
-                    if line[0] == str(3):
+                    if line[0] == str(3) and t3:
+                        tab3.append(line)
                         tmp3.append(line)
-                    if line[0] == str(4):
+                    if line[0] == str(4) and t4:
+                        tab4.append(line)
                         tmp4.append(line)
                 if line[1] == 'ref':
                     if line[0] == str(1):
@@ -1153,18 +1262,15 @@ class LocalIO:
         pos2 = tmp2
         pos3 = tmp3
         pos4 = tmp4
-        tab1 = copy.deepcopy(tmp1)
-        tab2 = copy.deepcopy(tmp2)
-        tab3 = copy.deepcopy(tmp3)
-        tab4 = copy.deepcopy(tmp4)
         if DBG:
             print("USER ",tab2)
         filename = path.basename(filename)
         main.title('GAP Motor Control: using ' + str(filename))
         main.title('USER settings: ' + str(filename))
         if DBG:
+            print("readUser")
             print(filename)
-        #update()
+        updateTabs()
 
     def saveUser(self):
         """
@@ -1240,11 +1346,11 @@ class LocalIO:
         pw.columnconfigure(4, {'minsize' : 50})
         pw.columnconfigure(6, {'minsize' : 50})
 
-        tk.Label(pw, font=20, text="Password").grid(row=1, column=1)
+        tk.Label(pw, font='Ariel 13' , text="Password").grid(row=1, column=1)
         rs = tk.StringVar()
-        rs = tk.Entry(pw, font=20, width=10, justify=RIGHT, borderwidth=2)
+        rs = tk.Entry(pw, font='Ariel 13' , width=10, justify=RIGHT, borderwidth=2)
         rs.grid(row=1, column=3)
-        b1 = tk.Button(pw, text="Enter", font=20, command=partial(F.chkPassword, pswd, rs), pady=2, height=0, width=4, relief='ridge')
+        b1 = tk.Button(pw, text="Enter", font='Ariel 13' , command=partial(F.chkPassword, pswd, rs), pady=2, height=0, width=4, relief='ridge')
         b1.grid(row=1, column=5)
 
         pswd.mainloop()
@@ -1369,7 +1475,7 @@ class LocalIO:
         # if s[1] > 5000:
         #     s[1] = 5000
         #     msg = "Speed limit is 5000"
-        #     tk.Label(conf, font=20, foreground="C0C0C0", text=msg).place(x=100, y=240, width=350, height=25)
+        #     tk.Label(conf, font='Ariel 13' , foreground="C0C0C0", text=msg).place(x=100, y=240, width=350, height=25)
         s[2] = tk.Entry(page[0], width=8, justify=RIGHT, borderwidth=2)
         s[3] = tk.Entry(page[0], width=8, justify=RIGHT, borderwidth=2)
         s[4] = tk.Entry(page[0], width=8, justify=RIGHT, borderwidth=2)
@@ -1450,7 +1556,6 @@ class TabControl:
         if unit == 1:
             position = M1.readMotor()
             closest = T.getClosest(unit, position, tab1)
-            tmp1[closest][2] = position
         if unit == 2:
             position = M2.readMotor()
             closest = T.getClosest(unit, position, tab2)
@@ -1475,30 +1580,29 @@ class TabControl:
         :return: the RadioButton number found
         """
 
-        global _warn1
-
         if DBG2:
             print(tablist)
 
         list_of_numbers = [int(i[2]) for i in tablist]
         closest = min(enumerate(list_of_numbers), key=lambda ix: (abs(ix[1] - position)))[0]
-        # nearest = list_of_numbers[closest]
-        # difference = position - nearest
-        '''
+        """
+        nearest = list_of_numbers[closest]
+        difference = position - nearest
+        name = tablist[closest][3] 
+        if len(tablist[closest]) == 5:
+            name += " " + tablist[closest][4]
         if abs(difference) > 0 and unit < 3:
-            message = "Motor " + str(unit) + " at " + str(position) + " is off " + str(difference) + " steps from " + str(nearest) + ". Re-click selection."
-            tk.Label(page[unit], font=20, foreground="#EE0000", text=message).place(x=50, y=240, width=450, height=25)
-            _warn1 = message
+            #message = "Motor " + str(unit) + " at " + str(position) + " is off " + str(difference) + " steps from " + str(nearest) + ". Re-click selection."
+            message = "Position " + str(position) + " is off " + str(difference) + " steps from " + name
+            message = name + " is off " + str(difference) + " steps"
+            tk.Label(page[unit], font='Ariel 13' , foreground="#FF0000", text=message).place(x=50, y=240, width=450, height=25)
         elif unit < 3:
-            tk.Label(page[unit], font=20, foreground="#F0F0F0", text=_warn1).place(x=50, y=240, width=450, height=25)
-            _warn = ""
+            tk.Label(page[unit], font='Ariel 13' , foreground="#D4D0C8", text=_warn1).place(x=50, y=240, width=450, height=25)
         #return closest
-
+        
         if abs(difference) > 0:
             message = "Notice: Motor is off " + str(difference) + " steps. Click selection."
-            _warn1 = message
-        '''
-    
+        """
         return closest
 
     def resetTab(self):
@@ -1521,10 +1625,10 @@ class TabControl:
 
         try:
             if t < 3:
-                e1 = tk.Label(page[t], font=12, bg="#FFFFFF", text=position, justify='right')
+                e1 = tk.Label(page[t], font='Ariel 12', bg="#FFFFFF", text=position, justify='right')
                 e1.place(x=x + 20, y=y, width=60, height=20)
             if t > 2:
-                e1 = tk.Label(page[t], font=12, bg="#FFFFFF", text=position, justify='right')
+                e1 = tk.Label(page[t], font='Ariel 12', bg="#FFFFFF", text=position, justify='right')
                 e1.place(x=x - 5, y=y + 20, width=60, height=20)
                 #e1.place(x=210, y=195, width=60, height=20)
         except:
@@ -1597,9 +1701,9 @@ class MakeTab:
 
         jogN = len(jog1); jogR = jogN * 20; jogS = 110 - jogR / 4
 
-        tk.Label(page[1], font=20, text="Current location").place(x=190, y=70, width=150, height=25)
-        tk.Label(page[1], font=20, text="Enter new location").place(x=190, y=140, width=150, height=25)
-        tk.Label(page[1], font=20, text="Jog").place(x=350, y=jogS, width=150, height=25)
+        tk.Label(page[1], font='Ariel 13' , text="Current location").place(x=190, y=70, width=150, height=25)
+        tk.Label(page[1], font='Ariel 13' , text="Enter new location").place(x=190, y=140, width=150, height=25)
+        tk.Label(page[1], font='Ariel 13' , text="Jog").place(x=350, y=jogS, width=150, height=25)
 
         row = 0
         for line in tab1:
@@ -1608,8 +1712,8 @@ class MakeTab:
                     name = line[3] + " " + line[4]
                 else:
                     name = line[3]
-                butn="rb" + str(row)
-                butn = tk.Radiobutton(page[1], font=20, text=name, command=partial(M1.setMotor, 1), padx=20,
+                #butn="rb" + str(row)
+                tk.Radiobutton(page[1], font='Ariel 13' , text=name, command=partial(M1.setMotor, 1), padx=20,
                            variable=slide, value=row, anchor='w').place(x=20, y=jogS+20+20*row, width=150, height=25)
                 row = row + 1
 
@@ -1618,15 +1722,15 @@ class MakeTab:
             if line[1] == 'jog':
                 if int(line[2]) < 0:
                     ##print(line[2])
-                    tk.Button(page[1], font=12, text=line[3], command=partial(M1.jogMotor, line[2]), padx=40,
+                    tk.Button(page[1], font='Ariel 12', text=line[3], command=partial(M1.jogMotor, line[2]), padx=40,
                           relief='ridge').place(x=380, y=jogS+30+row1*20, width=50, height=22)
                     row1 = row1 + 1
                 if int(line[2]) > 0:
-                    tk.Button(page[1], font=12, text=line[3], command=partial(M1.jogMotor, line[2]), padx=40,
+                    tk.Button(page[1], font='Ariel 12', text=line[3], command=partial(M1.jogMotor, line[2]), padx=40,
                           relief='ridge').place(x=428, y=jogS+30+row2*20, width=50, height=22)
                     row2 = row2 + 1
 
-        tk.Button(page[1], font=20, text="Go", command=partial(M1.getTarget), padx=40).place(x=215, y=175, width=30, height=20)
+        tk.Button(page[1], font='Ariel 13' , text="Go", command=partial(M1.getTarget), padx=40).place(x=215, y=175, width=30, height=20)
 
     def tablet2(self):
         """
@@ -1641,9 +1745,9 @@ class MakeTab:
 
         jogN = len(jog2); jogR = jogN * 20; jogS = 110 - jogR / 4
 
-        tk.Label(page[2], font=20, text="Current location").place(x=190, y=70, width=150, height=25)
-        tk.Label(page[2], font=20, text="Enter new location").place(x=190, y=140, width=150, height=25)
-        tk.Label(page[2], font=20, text="Jog").place(x=350, y=jogS, width=150, height=25)
+        tk.Label(page[2], font='Ariel 13' , text="Current location").place(x=190, y=70, width=150, height=25)
+        tk.Label(page[2], font='Ariel 13' , text="Enter new location").place(x=190, y=140, width=150, height=25)
+        tk.Label(page[2], font='Ariel 13' , text="Jog").place(x=350, y=jogS, width=150, height=25)
 
         row = 0
         for line in tab2:
@@ -1652,7 +1756,7 @@ class MakeTab:
                     name = line[3] + " " + line[4]
                 else:
                     name = line[3]
-                tk.Radiobutton(page[2], font=20, text=name, command=partial(M2.setMotor, 2), padx=20,
+                tk.Radiobutton(page[2], font='Ariel 13' , text=name, command=partial(M2.setMotor, 2), padx=20,
                            variable=source, value=row, anchor='w').place(x=20, y=jogS+25+20*row, width=150, height=25)
                 row = row + 1
 
@@ -1660,15 +1764,15 @@ class MakeTab:
         for line in jog2:
             if line[1] == 'jog':
                 if int(line[2]) < 0:
-                    tk.Button(page[2], font=12, text=line[3], command=partial(M2.jogMotor, line[2]), padx=40,
+                    tk.Button(page[2], font='Ariel 12', text=line[3], command=partial(M2.jogMotor, line[2]), padx=40,
                           relief='ridge').place(x=380, y=jogS+30+row1*20, width=50, height=22)
                     row1 = row1 + 1
                 if int(line[2]) > 0:
-                    tk.Button(page[2], font=12, text=line[3], command=partial(M2.jogMotor, line[2]), padx=40,
+                    tk.Button(page[2], font='Ariel 12', text=line[3], command=partial(M2.jogMotor, line[2]), padx=40,
                           relief='ridge').place(x=428, y=jogS+30+row2*20, width=50, height=22)
                     row2 = row2 + 1
  
-        tk.Button(page[2], font=20, text="Go", command=partial(M2.getTarget), padx=40).place(x=215, y=175, width=30, height=20)
+        tk.Button(page[2], font='Ariel 13' , text="Go", command=partial(M2.getTarget), padx=40).place(x=215, y=175, width=30, height=20)
 
     def tablet3(self):
         """
@@ -1683,10 +1787,10 @@ class MakeTab:
 
         jogN = len(jog3); jogR = jogN * 20; jogS = 110 - jogR / 4
 
-        tk.Label(page[3], font=20, text="Grating 1 angle is").place(x=30, y=50, width=150, height=25)
-        tk.Label(page[3], font=20, text="Current location").place(x=30, y=120, width=150, height=25)
-        tk.Label(page[3], font=20, text="Enter new location").place(x=30, y=190, width=150, height=25)
-        tk.Label(page[3], font=20, text="Jog").place(x=350, y=jogS, width=150, height=25)
+        tk.Label(page[3], font='Ariel 13' , text="Grating 1 angle is").place(x=30, y=50, width=150, height=25)
+        tk.Label(page[3], font='Ariel 13' , text="Current location").place(x=30, y=120, width=150, height=25)
+        tk.Label(page[3], font='Ariel 13' , text="Enter new location").place(x=30, y=190, width=150, height=25)
+        tk.Label(page[3], font='Ariel 13' , text="Jog").place(x=350, y=jogS, width=150, height=25)
         tk.Label(page[3], font=10, text="2500 steps per 9" + u"\u00b0").place(x=-10, y=215, width=250, height=25)
 
         row = 0
@@ -1696,31 +1800,31 @@ class MakeTab:
                     name = line[3] + " " + line[4]
                 else:
                     name = line[3]
-                tk.Radiobutton(page[3], font=20, text=name, command=partial(M3.setMotor, 3), padx=20,
+                tk.Radiobutton(page[3], font='Ariel 13' , text=name, command=partial(M3.setMotor, 3), padx=20,
                            variable=grate1, value=row, anchor='w').place(x=20, y=75+20*row, width=150, height=25)
                 row = row + 1
             if line[1] == 'res':
-                Resolution[t] = int(line[2])
+                Resolution[self.unit] = int(line[2])
                 #_res.append[res[t])
             if line[1] == 'ref':
-                Reference[t] = int(line[2])
+                Reference[self.unit] = int(line[2])
                 #_ref[unit] = int(line[2])
 
         row1 = 0; row2 = 0
         for line in jog3:
             if line[1] == 'jog':
                 if int(line[2]) < 0:
-                    tk.Button(page[3], font=12, text=line[3], command=partial(M3.jogMotor, line[2]), padx=40,
+                    tk.Button(page[3], font='Ariel 12', text=line[3], command=partial(M3.jogMotor, line[2]), padx=40,
                           relief='ridge').place(x=380, y=jogS+30+row1*20, width=50, height=22)
                     row1 = row1 + 1
                 if int(line[2]) > 0:
-                    tk.Button(page[3], font=12, text=line[3], command=partial(M3.jogMotor, line[2]), padx=40,
+                    tk.Button(page[3], font='Ariel 12', text=line[3], command=partial(M3.jogMotor, line[2]), padx=40,
                           relief='ridge').place(x=428, y=jogS+30+row2*20, width=50, height=22)
                     #st = I.convertS2Dcd(line[3], res[3])
-                    #tk.Label(page[3], font=12, text=st).place(x=476, y=jogS+30+row2*20, width=50, height=22)
+                    #tk.Label(page[3], font='Ariel 12', text=st).place(x=476, y=jogS+30+row2*20, width=50, height=22)
                     row2 = row2 + 1
 
-        tk.Button(page[3], font=20, text="Go", fg="red", command=partial(M3.getTarget), padx=40).place(x=225, y=160, width=30, height=20)
+        tk.Button(page[3], font='Ariel 13' , text="Go", fg="red", command=partial(M3.getTarget), padx=40).place(x=225, y=160, width=30, height=20)
 
     def tablet4(self):
         """
@@ -1735,10 +1839,10 @@ class MakeTab:
 
         jogN = len(jog4); jogR = jogN * 20; jogS = 110 - jogR / 4
 
-        tk.Label(page[4], font=20, text="Grating 2 angle is").place(x=30, y=50, width=150, height=25)
-        tk.Label(page[4], font=20, text="Current location").place(x=30, y=120, width=150, height=25)
-        tk.Label(page[4], font=20, text="Enter new location").place(x=30, y=190, width=150, height=25)
-        tk.Label(page[4], font=20, text="Jog").place(x=350, y=jogS, width=150, height=25)
+        tk.Label(page[4], font='Ariel 13' , text="Grating 2 angle is").place(x=30, y=50, width=150, height=25)
+        tk.Label(page[4], font='Ariel 13' , text="Current location").place(x=30, y=120, width=150, height=25)
+        tk.Label(page[4], font='Ariel 13' , text="Enter new location").place(x=30, y=190, width=150, height=25)
+        tk.Label(page[4], font='Ariel 13' , text="Jog").place(x=350, y=jogS, width=150, height=25)
         tk.Label(page[4], font=10, text="2500 steps per 9" + u"\u00b0").place(x=-10, y=215, width=250, height=25)
 
         row = 0
@@ -1748,27 +1852,27 @@ class MakeTab:
                     name = line[3] + " " + line[4]
                 else:
                     name = line[3]
-                tk.Radiobutton(page[4], font=20, text=name, command=partial(M4.setMotor, 4), padx=20,
+                tk.Radiobutton(page[4], font='Ariel 13' , text=name, command=partial(M4.setMotor, 4), padx=20,
                            variable=grate2, value=row, anchor='w').place(x=20, y=75+20*row, width=150, height=25)
                 row = row + 1
             if line[1] == 'res':
-                Resolution[t] = int(line[2])
+                Resolution[self.unit] = int(line[2])
             if line[1] == 'ref':
-                Reference[t] = int(line[2])
+                Reference[self.unit] = int(line[2])
 
         row1 = 0; row2 = 0
         for line in jog4:
             if line[1] == 'jog':
                 if int(line[2]) < 0:
-                    tk.Button(page[4], font=12, text=line[3], command=partial(M4.jogMotor, line[2]), padx=40,
+                    tk.Button(page[4], font='Ariel 12', text=line[3], command=partial(M4.jogMotor, line[2]), padx=40,
                           relief='ridge').place(x=380, y=jogS+30+row1*20, width=50, height=22)
                     row1 = row1 + 1
                 if int(line[2]) > 0:
-                    tk.Button(page[4], font=12, text=line[3], command=partial(M4.jogMotor, line[2]), padx=40,
+                    tk.Button(page[4], font='Ariel 12', text=line[3], command=partial(M4.jogMotor, line[2]), padx=40,
                           relief='ridge').place(x=428, y=jogS+30+row2*20, width=50, height=22)
                     row2 = row2 + 1
 
-        tk.Button(page[4], font=20, text="Go", fg="red", command=partial(M4.getTarget), padx=40).place(x=225, y=160, width=30, height=20)
+        tk.Button(page[4], font='Ariel 13' , text="Go", fg="red", command=partial(M4.getTarget), padx=40).place(x=225, y=160, width=30, height=20)
 
     def warntab(self, unit):
         """
@@ -1797,10 +1901,10 @@ class MakeTab:
         warn5 = "Diagnose lights on units."
         fontStyle = tkFont.Font(family="Lucida Grande", size=18)
         tk.Label(page[unit], font=fontStyle, text=warn1, fg="#CC0000", bg="#FFCCCC").place(x=90, y=50, width=350, height=25)
-        tk.Label(page[unit], font=20, text=warn2, bg="#FFCCCC").place(x=90, y=90, width=350, height=25)
-        tk.Label(page[unit], font=20, text=warn3, bg="#FFCCCC").place(x=90, y=120, width=350, height=25)
-        tk.Label(page[unit], font=20, text=warn4, bg="#FFCCCC").place(x=90, y=150, width=350, height=25)
-        tk.Label(page[unit], font=20, text=warn5, bg="#FFCCCC").place(x=90, y=180, width=350, height=25)
+        tk.Label(page[unit], font='Ariel 13' , text=warn2, bg="#FFCCCC").place(x=90, y=90, width=350, height=25)
+        tk.Label(page[unit], font='Ariel 13' , text=warn3, bg="#FFCCCC").place(x=90, y=120, width=350, height=25)
+        tk.Label(page[unit], font='Ariel 13' , text=warn4, bg="#FFCCCC").place(x=90, y=150, width=350, height=25)
+        tk.Label(page[unit], font='Ariel 13' , text=warn5, bg="#FFCCCC").place(x=90, y=180, width=350, height=25)
 
 """
 Main loop, initialize.

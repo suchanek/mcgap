@@ -626,7 +626,7 @@ class MotorControl:
         #msg = "Wait " + str(int(10.0 * delay) / 10.0) + " sec"
         msg = f"Wait {delay} sec"
 
-        tk.Label(page[unit], font='Ariel 13' , foreground="#FF0000", text=msg).place(x=90, y=0, width=350, height=25)
+        tk.Label(page[unit], font='Ariel 13' , foreground="#FF0000", text=msg).place(x=90, y=10, width=350, height=25)
         
         reps = 0
         speed = self.speed
@@ -656,7 +656,7 @@ class MotorControl:
             rp = read.registers[0]
             main.config(cursor="")
 
-        tk.Label(page[unit], font='Ariel 13' , foreground="#F0F0F0", text=msg).place(x=90, y=0, width=350, height=25)
+        tk.Label(page[unit], font='Ariel 13' , foreground="#F0F0F0", text=msg).place(x=90, y=10, width=350, height=25)
         if DBG:
             print("readDelay OUT",rp)
         self.position = rp
