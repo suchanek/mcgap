@@ -494,7 +494,7 @@ class MotorControl:
             if flag > 0:
                 tk.Label(page[unit], font='Ariel 13' , foreground="#000000", text=msg).place(x=50, y=240, width=350, height=25)
             else:
-                tk.Label(page[unit], font='Ariel 13' , foreground="C0C0C0", text='               ').place(x=50, y=240, width=350, height=25)
+                tk.Label(page[unit], font='Ariel 13' , foreground="#C0C0C0", text='               ').place(x=50, y=240, width=350, height=25)
 
             return flag
     
