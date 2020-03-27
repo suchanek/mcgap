@@ -137,15 +137,17 @@ def menu():
     menubar.add_cascade(label="File", menu=filemenu)
 
 def message(unit, mflag, msg):
+    global page
+
     if mflag == 1:
         if DBG2:
             print(unit,"MESSAGE:",msg,">",page[unit],"<")
-        tk.Label(page[unit], font=20, foreground="#000000", text=msg).place(x=100, y=10, width=350, height=25)
+        tk.Label(page[unit], font='Ariel 13' , foreground="#000000", text=msg).place(x=100, y=10, width=350, height=25)
         mflag = 0
     else:
         if DBG2:
             print(unit,"MESSAGE:",msg,">",page[unit],"<")
-        tk.Label(page[unit], font=20, foreground="#F0F0F0", text=msg).place(x=100, y=10, width=350, height=25)
+        tk.Label(page[unit], font='Ariel 13' , foreground="#F0F0F0", text=msg).place(x=100, y=10, width=350, height=25)
 
 
 def warn():
@@ -155,9 +157,9 @@ def warn():
     temp.wm_title('WARNING')
     w = Canvas(temp, width=340, height=150)
     w.pack()
-    w.create_text(170,15,text='WARNING:',font=20,fill="#FF0000")
-    w.create_text(170,45,text=warn2,font=20)
-    w.create_text(170,75,text=warn3,font=20)
+    w.create_text(170,15,text='WARNING:',font='Ariel 13' ,fill="#FF0000")
+    w.create_text(170,45,text=warn2,font='Ariel 13' )
+    w.create_text(170,75,text=warn3,font='Ariel 13' )
     windowWidth = temp.winfo_reqwidth()
     windowHeight = temp.winfo_reqheight()
     positionRight = int(temp.winfo_screenwidth()/2 - windowWidth/1)
@@ -166,7 +168,7 @@ def warn():
     # temp.geometry("+{}+{}".format(positionRight, positionDown))
     temp.geometry(f'+{positionRight}+{positionDown}')
 
-    b = tk.Button(w, text='QUIT', font=30, width=35, command=exit, anchor=S) 
+    b = tk.Button(w, text='QUIT', font='Ariel 15' , width=35, command=exit, anchor=S) 
     b.configure(width=10, activebackground="#BBBBBB")
     w.create_window(120, 110, anchor=NW, window=b)
     b.place(x=120,y=110)
@@ -487,9 +489,9 @@ class MotorControl:
                 # we update with actual pos, not lower since that's not right.
                 Location[unit] = pos
             if flag > 0:
-                tk.Label(page[unit], font=20, foreground="#000000", text=msg).place(x=50, y=240, width=350, height=25)
+                tk.Label(page[unit], font='Ariel 13' , foreground="#000000", text=msg).place(x=50, y=240, width=350, height=25)
             #else:
-            #    tk.Label(page[unit], font=20, foreground="C0C0C0", text=msg).place(x=50, y=240, width=350, height=25)
+            #    tk.Label(page[unit], font='Ariel 13' , foreground="C0C0C0", text=msg).place(x=50, y=240, width=350, height=25)
 
             return flag
     
@@ -579,19 +581,19 @@ class MotorControl:
         temp.wm_title('ALARM')
         w = Canvas(temp, width=340, height=150)
         w.pack()
-        w.create_text(170,15,text='ERROR:',font=20,fill="#FF0000")
-        w.create_text(170,45,text=warn2,font=20)
-        w.create_text(170,70,text=warn3,font=20)
-        w.create_text(170,95,text=warn4,font=20)
+        w.create_text(170,15,text='ERROR:',font='Ariel 13' ,fill="#FF0000")
+        w.create_text(170,45,text=warn2,font='Ariel 13' )
+        w.create_text(170,70,text=warn3,font='Ariel 13' )
+        w.create_text(170,95,text=warn4,font='Ariel 13' )
         windowWidth = temp.winfo_reqwidth()
         windowHeight = temp.winfo_reqheight()
         positionRight = int(temp.winfo_screenwidth()/2 - windowWidth/1)
         positionDown = int(temp.winfo_screenheight()/2 - windowHeight/2)
         temp.geometry("+{}+{}".format(positionRight, positionDown))
         if self.checkMotor() and self.connected or TEST:
-            b = tk.Button(w, text='Reset', font=30, width=30, command = self.rstAlrm, anchor = S) 
+            b = tk.Button(w, text='Reset', font='Ariel 15' , width=30, command = self.rstAlrm, anchor = S) 
         else:
-            b = tk.Button(w, text='Okay', font=30, width=30, command = temp.destroy, anchor = S) 
+            b = tk.Button(w, text='Okay', font='Ariel 15' , width=30, command = temp.destroy, anchor = S) 
         b.configure(width = 10, activebackground = "#BBBBBB")
         b.place(x=120,y=120)
         temp.mainloop()
@@ -621,8 +623,10 @@ class MotorControl:
         delay = (abs(rp - target)) * 1.2 / speed
         ldelay = delay
         
-        msg = "Wait " + str(int(10.0 * delay) / 10.0) + " sec"
-        tk.Label(page[unit], font=20, foreground="#FF0000", text=msg).place(x=90, y=0, width=350, height=25)
+        #msg = "Wait " + str(int(10.0 * delay) / 10.0) + " sec"
+        msg = f"Wait {delay} sec"
+
+        tk.Label(page[unit], font='Ariel 13' , foreground="#FF0000", text=msg).place(x=90, y=0, width=350, height=25)
         
         reps = 0
         speed = self.speed
@@ -651,8 +655,8 @@ class MotorControl:
             read = client.read_holding_registers(0x00C7, 1, unit=unit)
             rp = read.registers[0]
             main.config(cursor="")
-            tk.Label(page[unit], font=20, foreground="#F0F0F0", text=msg).place(x=90, y=0, width=350, height=25)
-            #e1 = tk.Label(page[unit], font=12, bg="#FFFFFF", text="WAIT", justify='right')
+
+        tk.Label(page[unit], font='Ariel 13' , foreground="#F0F0F0", text=msg).place(x=90, y=0, width=350, height=25)
         if DBG:
             print("readDelay OUT",rp)
         self.position = rp
@@ -1342,11 +1346,11 @@ class LocalIO:
         pw.columnconfigure(4, {'minsize' : 50})
         pw.columnconfigure(6, {'minsize' : 50})
 
-        tk.Label(pw, font=20, text="Password").grid(row=1, column=1)
+        tk.Label(pw, font='Ariel 13' , text="Password").grid(row=1, column=1)
         rs = tk.StringVar()
-        rs = tk.Entry(pw, font=20, width=10, justify=RIGHT, borderwidth=2)
+        rs = tk.Entry(pw, font='Ariel 13' , width=10, justify=RIGHT, borderwidth=2)
         rs.grid(row=1, column=3)
-        b1 = tk.Button(pw, text="Enter", font=20, command=partial(F.chkPassword, pswd, rs), pady=2, height=0, width=4, relief='ridge')
+        b1 = tk.Button(pw, text="Enter", font='Ariel 13' , command=partial(F.chkPassword, pswd, rs), pady=2, height=0, width=4, relief='ridge')
         b1.grid(row=1, column=5)
 
         pswd.mainloop()
@@ -1471,7 +1475,7 @@ class LocalIO:
         # if s[1] > 5000:
         #     s[1] = 5000
         #     msg = "Speed limit is 5000"
-        #     tk.Label(conf, font=20, foreground="C0C0C0", text=msg).place(x=100, y=240, width=350, height=25)
+        #     tk.Label(conf, font='Ariel 13' , foreground="C0C0C0", text=msg).place(x=100, y=240, width=350, height=25)
         s[2] = tk.Entry(page[0], width=8, justify=RIGHT, borderwidth=2)
         s[3] = tk.Entry(page[0], width=8, justify=RIGHT, borderwidth=2)
         s[4] = tk.Entry(page[0], width=8, justify=RIGHT, borderwidth=2)
@@ -1577,8 +1581,6 @@ class TabControl:
         :return: the RadioButton number found
         """
 
-        global _warn1
-
         if DBG2:
             print(tablist)
 
@@ -1593,16 +1595,13 @@ class TabControl:
             #message = "Motor " + str(unit) + " at " + str(position) + " is off " + str(difference) + " steps from " + str(nearest) + ". Re-click selection."
             message = "Position " + str(position) + " is off " + str(difference) + " steps from " + name
             message = name + " is off " + str(difference) + " steps"
-            tk.Label(page[unit], font=20, foreground="#FF0000", text=message).place(x=50, y=240, width=450, height=25)
-            _warn1 = message
+            tk.Label(page[unit], font='Ariel 13' , foreground="#FF0000", text=message).place(x=50, y=240, width=450, height=25)
         elif unit < 3:
-            tk.Label(page[unit], font=20, foreground="#D4D0C8", text=_warn1).place(x=50, y=240, width=450, height=25)
-            _warn1 = ""
+            tk.Label(page[unit], font='Ariel 13' , foreground="#D4D0C8", text=_warn1).place(x=50, y=240, width=450, height=25)
         #return closest
 
         if abs(difference) > 0:
             message = "Notice: Motor is off " + str(difference) + " steps. Click selection."
-            _warn1 = message
     
         return closest
 
@@ -1702,9 +1701,9 @@ class MakeTab:
 
         jogN = len(jog1); jogR = jogN * 20; jogS = 110 - jogR / 4
 
-        tk.Label(page[1], font=20, text="Current location").place(x=190, y=70, width=150, height=25)
-        tk.Label(page[1], font=20, text="Enter new location").place(x=190, y=140, width=150, height=25)
-        tk.Label(page[1], font=20, text="Jog").place(x=350, y=jogS, width=150, height=25)
+        tk.Label(page[1], font='Ariel 13' , text="Current location").place(x=190, y=70, width=150, height=25)
+        tk.Label(page[1], font='Ariel 13' , text="Enter new location").place(x=190, y=140, width=150, height=25)
+        tk.Label(page[1], font='Ariel 13' , text="Jog").place(x=350, y=jogS, width=150, height=25)
 
         row = 0
         for line in tab1:
@@ -1714,7 +1713,7 @@ class MakeTab:
                 else:
                     name = line[3]
                 #butn="rb" + str(row)
-                tk.Radiobutton(page[1], font=20, text=name, command=partial(M1.setMotor, 1), padx=20,
+                tk.Radiobutton(page[1], font='Ariel 13' , text=name, command=partial(M1.setMotor, 1), padx=20,
                            variable=slide, value=row, anchor='w').place(x=20, y=jogS+20+20*row, width=150, height=25)
                 row = row + 1
 
@@ -1731,7 +1730,7 @@ class MakeTab:
                           relief='ridge').place(x=428, y=jogS+30+row2*20, width=50, height=22)
                     row2 = row2 + 1
 
-        tk.Button(page[1], font=20, text="Go", command=partial(M1.getTarget), padx=40).place(x=215, y=175, width=30, height=20)
+        tk.Button(page[1], font='Ariel 13' , text="Go", command=partial(M1.getTarget), padx=40).place(x=215, y=175, width=30, height=20)
 
     def tablet2(self):
         """
@@ -1746,9 +1745,9 @@ class MakeTab:
 
         jogN = len(jog2); jogR = jogN * 20; jogS = 110 - jogR / 4
 
-        tk.Label(page[2], font=20, text="Current location").place(x=190, y=70, width=150, height=25)
-        tk.Label(page[2], font=20, text="Enter new location").place(x=190, y=140, width=150, height=25)
-        tk.Label(page[2], font=20, text="Jog").place(x=350, y=jogS, width=150, height=25)
+        tk.Label(page[2], font='Ariel 13' , text="Current location").place(x=190, y=70, width=150, height=25)
+        tk.Label(page[2], font='Ariel 13' , text="Enter new location").place(x=190, y=140, width=150, height=25)
+        tk.Label(page[2], font='Ariel 13' , text="Jog").place(x=350, y=jogS, width=150, height=25)
 
         row = 0
         for line in tab2:
@@ -1757,7 +1756,7 @@ class MakeTab:
                     name = line[3] + " " + line[4]
                 else:
                     name = line[3]
-                tk.Radiobutton(page[2], font=20, text=name, command=partial(M2.setMotor, 2), padx=20,
+                tk.Radiobutton(page[2], font='Ariel 13' , text=name, command=partial(M2.setMotor, 2), padx=20,
                            variable=source, value=row, anchor='w').place(x=20, y=jogS+25+20*row, width=150, height=25)
                 row = row + 1
 
@@ -1773,7 +1772,7 @@ class MakeTab:
                           relief='ridge').place(x=428, y=jogS+30+row2*20, width=50, height=22)
                     row2 = row2 + 1
  
-        tk.Button(page[2], font=20, text="Go", command=partial(M2.getTarget), padx=40).place(x=215, y=175, width=30, height=20)
+        tk.Button(page[2], font='Ariel 13' , text="Go", command=partial(M2.getTarget), padx=40).place(x=215, y=175, width=30, height=20)
 
     def tablet3(self):
         """
@@ -1788,10 +1787,10 @@ class MakeTab:
 
         jogN = len(jog3); jogR = jogN * 20; jogS = 110 - jogR / 4
 
-        tk.Label(page[3], font=20, text="Grating 1 angle is").place(x=30, y=50, width=150, height=25)
-        tk.Label(page[3], font=20, text="Current location").place(x=30, y=120, width=150, height=25)
-        tk.Label(page[3], font=20, text="Enter new location").place(x=30, y=190, width=150, height=25)
-        tk.Label(page[3], font=20, text="Jog").place(x=350, y=jogS, width=150, height=25)
+        tk.Label(page[3], font='Ariel 13' , text="Grating 1 angle is").place(x=30, y=50, width=150, height=25)
+        tk.Label(page[3], font='Ariel 13' , text="Current location").place(x=30, y=120, width=150, height=25)
+        tk.Label(page[3], font='Ariel 13' , text="Enter new location").place(x=30, y=190, width=150, height=25)
+        tk.Label(page[3], font='Ariel 13' , text="Jog").place(x=350, y=jogS, width=150, height=25)
         tk.Label(page[3], font=10, text="2500 steps per 9" + u"\u00b0").place(x=-10, y=215, width=250, height=25)
 
         row = 0
@@ -1801,7 +1800,7 @@ class MakeTab:
                     name = line[3] + " " + line[4]
                 else:
                     name = line[3]
-                tk.Radiobutton(page[3], font=20, text=name, command=partial(M3.setMotor, 3), padx=20,
+                tk.Radiobutton(page[3], font='Ariel 13' , text=name, command=partial(M3.setMotor, 3), padx=20,
                            variable=grate1, value=row, anchor='w').place(x=20, y=75+20*row, width=150, height=25)
                 row = row + 1
             if line[1] == 'res':
@@ -1825,7 +1824,7 @@ class MakeTab:
                     #tk.Label(page[3], font=12, text=st).place(x=476, y=jogS+30+row2*20, width=50, height=22)
                     row2 = row2 + 1
 
-        tk.Button(page[3], font=20, text="Go", fg="red", command=partial(M3.getTarget), padx=40).place(x=225, y=160, width=30, height=20)
+        tk.Button(page[3], font='Ariel 13' , text="Go", fg="red", command=partial(M3.getTarget), padx=40).place(x=225, y=160, width=30, height=20)
 
     def tablet4(self):
         """
@@ -1840,10 +1839,10 @@ class MakeTab:
 
         jogN = len(jog4); jogR = jogN * 20; jogS = 110 - jogR / 4
 
-        tk.Label(page[4], font=20, text="Grating 2 angle is").place(x=30, y=50, width=150, height=25)
-        tk.Label(page[4], font=20, text="Current location").place(x=30, y=120, width=150, height=25)
-        tk.Label(page[4], font=20, text="Enter new location").place(x=30, y=190, width=150, height=25)
-        tk.Label(page[4], font=20, text="Jog").place(x=350, y=jogS, width=150, height=25)
+        tk.Label(page[4], font='Ariel 13' , text="Grating 2 angle is").place(x=30, y=50, width=150, height=25)
+        tk.Label(page[4], font='Ariel 13' , text="Current location").place(x=30, y=120, width=150, height=25)
+        tk.Label(page[4], font='Ariel 13' , text="Enter new location").place(x=30, y=190, width=150, height=25)
+        tk.Label(page[4], font='Ariel 13' , text="Jog").place(x=350, y=jogS, width=150, height=25)
         tk.Label(page[4], font=10, text="2500 steps per 9" + u"\u00b0").place(x=-10, y=215, width=250, height=25)
 
         row = 0
@@ -1853,7 +1852,7 @@ class MakeTab:
                     name = line[3] + " " + line[4]
                 else:
                     name = line[3]
-                tk.Radiobutton(page[4], font=20, text=name, command=partial(M4.setMotor, 4), padx=20,
+                tk.Radiobutton(page[4], font='Ariel 13' , text=name, command=partial(M4.setMotor, 4), padx=20,
                            variable=grate2, value=row, anchor='w').place(x=20, y=75+20*row, width=150, height=25)
                 row = row + 1
             if line[1] == 'res':
@@ -1873,7 +1872,7 @@ class MakeTab:
                           relief='ridge').place(x=428, y=jogS+30+row2*20, width=50, height=22)
                     row2 = row2 + 1
 
-        tk.Button(page[4], font=20, text="Go", fg="red", command=partial(M4.getTarget), padx=40).place(x=225, y=160, width=30, height=20)
+        tk.Button(page[4], font='Ariel 13' , text="Go", fg="red", command=partial(M4.getTarget), padx=40).place(x=225, y=160, width=30, height=20)
 
     def warntab(self, unit):
         """
@@ -1902,10 +1901,10 @@ class MakeTab:
         warn5 = "Diagnose lights on units."
         fontStyle = tkFont.Font(family="Lucida Grande", size=18)
         tk.Label(page[unit], font=fontStyle, text=warn1, fg="#CC0000", bg="#FFCCCC").place(x=90, y=50, width=350, height=25)
-        tk.Label(page[unit], font=20, text=warn2, bg="#FFCCCC").place(x=90, y=90, width=350, height=25)
-        tk.Label(page[unit], font=20, text=warn3, bg="#FFCCCC").place(x=90, y=120, width=350, height=25)
-        tk.Label(page[unit], font=20, text=warn4, bg="#FFCCCC").place(x=90, y=150, width=350, height=25)
-        tk.Label(page[unit], font=20, text=warn5, bg="#FFCCCC").place(x=90, y=180, width=350, height=25)
+        tk.Label(page[unit], font='Ariel 13' , text=warn2, bg="#FFCCCC").place(x=90, y=90, width=350, height=25)
+        tk.Label(page[unit], font='Ariel 13' , text=warn3, bg="#FFCCCC").place(x=90, y=120, width=350, height=25)
+        tk.Label(page[unit], font='Ariel 13' , text=warn4, bg="#FFCCCC").place(x=90, y=150, width=350, height=25)
+        tk.Label(page[unit], font='Ariel 13' , text=warn5, bg="#FFCCCC").place(x=90, y=180, width=350, height=25)
 
 """
 Main loop, initialize.
