@@ -295,11 +295,13 @@ class MotorControl:
         if self.connected:
             if isinstance(self.client, ModbusException):
                 print("!!! checkMotor: Modbus ioexception for unit ", self.unit)
+                self.connected = False
                 return False
             # attempt to read a register - if we can't then we have a problem
             read = self.client.read_holding_registers(0x00D7, 1, unit=self.unit)
             if isinstance(read,  ModbusException):
                 print("!!! checkMotor: Modbus ioexception for unit ", self.unit)
+                self.connected = False
                 return False
             return True
         else:
@@ -498,6 +500,7 @@ class MotorControl:
     def chkAlrm(self):
         read = 0
         if isinstance(self.client, ModbusException):
+            self.connected = False
             return True
         # any time we read or write registers we have to be connected first
         self.connectMotor()
@@ -623,9 +626,8 @@ class MotorControl:
         delay = (abs(rp - target)) * 1.2 / speed
         ldelay = delay
         
-        #msg = "Wait " + str(int(10.0 * delay) / 10.0) + " sec"
-        msg = f"Wait {delay} sec"
-
+        msg = "Wait " + str(int(10.0 * delay) / 10.0) + " sec"
+        
         tk.Label(page[unit], font='Ariel 13' , foreground="#FF0000", text=msg).place(x=90, y=10, width=350, height=25)
         
         reps = 0
@@ -748,16 +750,16 @@ class MotorControl:
 
             setPosition = int(location) 
             if DBG2:
-                print("SEND WRITE TRY ",unit," TO ",setPosition)
+                print("--- SEND WRITE TRY ",unit," TO ",setPosition)
             self.client.write_register(0x7D, 0x20, unit=unit)
             self.client.write_register(0x1801, 1, unit=unit)
             self.client.write_register(0x0383, 1, unit=unit)
             self.client.write_register(0x1805, speed, unit=unit)
             if int(delta) > 0:
-                if DBG:
-                    print("SEND MOTOR FWD", unit, self.position)
+                if DBG2:
+                    print("--- Send Write unit: ", unit, self.position)
             if int(delta) < 0:
-                if DBG:
+                if DBG2:
                     print("SEND MOTOR REV", unit, self.position)
             self.client.write_register(0x1803, setPosition, unit=unit)
             self.client.write_register(0x7D, 0x8, unit=unit)
@@ -1538,8 +1540,9 @@ class TabControl:
         """
         global e
 
-        s = e[t].get()
-        if s == '':
+        if e[t] != 0:
+            s = e[t].get()
+        else:
             s = 0
         return int(s)
 

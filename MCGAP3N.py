@@ -295,11 +295,13 @@ class MotorControl:
         if self.connected:
             if isinstance(self.client, ModbusException):
                 print("!!! checkMotor: Modbus ioexception for unit ", self.unit)
+                self.connected = False
                 return False
             # attempt to read a register - if we can't then we have a problem
             read = self.client.read_holding_registers(0x00D7, 1, unit=self.unit)
             if isinstance(read,  ModbusException):
                 print("!!! checkMotor: Modbus ioexception for unit ", self.unit)
+                self.connected = False
                 return False
             return True
         else:
@@ -330,10 +332,10 @@ class MotorControl:
 		:return client:
 		"""
         res = 0
-        #if self.connected:
-        #    return True
+        if self.connected:
+            return True
 
-        port = self.port
+        port = port485
         unit = self.unit
 
         self.client = ModbusClient(method='rtu',
@@ -440,7 +442,7 @@ class MotorControl:
             jogPosition = int(delta) + rp
             mflag = 1
             msg = "Motor " + str(unit) +" is not available"
-            print("!!! jogMotor: Modbus ioException for unit ", self.unit)
+            print("!!! jogMotor has an ioException for unit ", self.unit)
             message(unit, mflag, msg)
             return
 
@@ -498,6 +500,7 @@ class MotorControl:
     def chkAlrm(self):
         read = 0
         if isinstance(self.client, ModbusException):
+            self.connected = False
             return True
         # any time we read or write registers we have to be connected first
         self.connectMotor()
@@ -624,7 +627,7 @@ class MotorControl:
         ldelay = delay
         
         msg = "Wait " + str(int(10.0 * delay) / 10.0) + " sec"
-
+        
         tk.Label(page[unit], font='Ariel 13' , foreground="#FF0000", text=msg).place(x=90, y=10, width=350, height=25)
         
         reps = 0
@@ -747,16 +750,16 @@ class MotorControl:
 
             setPosition = int(location) 
             if DBG2:
-                print("SEND WRITE TRY ",unit," TO ",setPosition)
+                print("--- SEND WRITE TRY ",unit," TO ",setPosition)
             self.client.write_register(0x7D, 0x20, unit=unit)
             self.client.write_register(0x1801, 1, unit=unit)
             self.client.write_register(0x0383, 1, unit=unit)
             self.client.write_register(0x1805, speed, unit=unit)
             if int(delta) > 0:
-                if DBG:
-                    print("SEND MOTOR FWD", unit, self.position)
+                if DBG2:
+                    print("--- Send Write unit: ", unit, self.position)
             if int(delta) < 0:
-                if DBG:
+                if DBG2:
                     print("SEND MOTOR REV", unit, self.position)
             self.client.write_register(0x1803, setPosition, unit=unit)
             self.client.write_register(0x7D, 0x8, unit=unit)
@@ -1536,6 +1539,7 @@ class TabControl:
         :return: Entry value
         """
         global e
+
         if e[t] != 0:
             s = e[t].get()
         else:
@@ -1911,9 +1915,7 @@ Main loop, initialize.
 #global variables
 
 # discover com port to RS485
-if DBG:
-    print("PORTS",ports)
-
+print("PORTS",ports)
 i = 0
 for p,q,r in ports:
     i += 1
@@ -1921,8 +1923,7 @@ for p,q,r in ports:
         print("RS485","P",p,"Q",q,"R",r)
         port485=p
     else:
-        if DBG:
-            print("MOTOR",i,"port",p)
+        print("MOTOR",i,"port",p)
 
 port485="COM6"
 
@@ -1932,12 +1933,12 @@ Motor check.
 F = LocalIO()
 F.readConfig()
 
-# do full initialization of the object. no global vars.
-M1 = MotorControl(1, port485, 100,   0, 1000,   3000, 0, 8000)
-M2 = MotorControl(2, port485, 100,   0, 1000,      0, 0, 1000)
-M3 = MotorControl(3, port485, 10000, 0, 100000, 1000, 0, 12500)
-M4 = MotorControl(4, port485, 10000, 0, 100000, 1000, 0, 150000)
 
+# do full initialization of the object. no global vars.
+M1 = MotorControl(1, "com7", 100,   0, 1000,   3000, 0, 8000)
+M2 = MotorControl(2, "com8", 100,   0, 1000,      0, 0, 1000)
+M3 = MotorControl(3, "com9", 10000, 0, 100000, 1000, 0, 12500)
+M4 = MotorControl(4, "com3", 10000, 0, 100000, 1000, 0, 150000)
 M1.connectMotor()
 M1.closeMotor()
 M2.connectMotor()
