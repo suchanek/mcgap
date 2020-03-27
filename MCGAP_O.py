@@ -3,6 +3,7 @@ from tkinter import *
 from tkinter.filedialog   import askopenfilename
 from tkinter.filedialog   import asksaveasfilename
 from tkinter import ttk
+
 from functools import partial
 import serial
 import usb.core
@@ -301,12 +302,14 @@ class MotorControl:
     def checkLimits(self):
         """
         Check for closure of limit switches. Assumes the motor is connected properly
+        Returns 1 if at limit, 0 if OK and READERROR if an exception is thrown.
         """ 
         lim1 = lim2 = lim3 = 0
 
         if isinstance(self.client, ModbusException):
             self.connected = False
-            return True
+            return READERROR
+
         if self.checkMotor():
             read = self.client.read_holding_registers(0x007D, 0x100, unit=self.unit)
             #print(f" Read is: {type(read)}")
@@ -326,11 +329,15 @@ class MotorControl:
                 print("!!! checkLimits: got modbus exception: ", ExceptionCodes.get(read.exception_code))
             else:
                 lim3 = read.registers[0] 
+            
             #self.closeMotor()
             if lim1 or lim2 or lim3:
                 self.stopMotor()
+                return 1
         else:
             print("--- Can't check for limit switches - client ioException error")
+            return READERROR
+        return 0
 
     def checkMotor(self):
         """
@@ -385,22 +392,15 @@ class MotorControl:
         port = port485
         unit = self.unit
 
-        self.client = ModbusClient(method='rtu',
-                            port=port,
-                            retries=100,
-                            timeout=0.5,
-                            rtscts=True,
-                            parity='E',
-                            baudrate=9600,
-                            strict=False,
-                            stopbits=2,
-                            unit=unit)
+        self.client = ModbusClient(method='rtu', port=port, retries=100, timeout=0.5,
+                            rtscts=True,parity='E',baudrate=9600,strict=False,stopbits=2,unit=unit)
+                    
         if isinstance(self.client, ConnException):
             print("Connection error!")
             self.connected = False
             
         if DBG:
-            print(".. connecting..")
+            print("--- Connecting to unit ", self.unit)
         
         res = self.client.connect()
 
@@ -549,17 +549,19 @@ class MotorControl:
         if isinstance(self.client, ModbusException):
             self.connected = False
             return True
-        # any time we read or write registers we have to be connected first
-        self.connectMotor()
+
+        # self.connectMotor()
         if self.checkMotor():
             if TEST:
                 alarm = 64
-                self.closeMotor()
+                # self.closeMotor()
             else:
-                # should check for exception here
                 read = self.client.read_holding_registers(0x007F, 1, unit=self.unit)
-                alarm = read.registers[0] 
-                self.closeMotor()
+                if isinstance(read, pymodbus.pdu.ExceptionResponse):
+                    print("!!! checkAlrm: got modbus exception: ", ExceptionCodes.get(read.exception_code))
+                else:    
+                    alarm = read.registers[0] 
+            # self.closeMotor()
         else:
             print(f"!!! chkAlrm can't read unit {self.unit}")
             return False
@@ -608,14 +610,14 @@ class MotorControl:
         unit = self.unit
         alarm = 0
     
-        self.connectMotor()
+        #self.connectMotor()
         if self.checkMotor() and not TEST:
             read = self.client.read_holding_registers(0x0081, 1, unit=unit)
             alarm = read.registers[0]
             self.closeMotor()
         else:
             alarm = 99
-            self.closeMotor()
+            #self.closeMotor()
 
         b1 = tk.Button(main, text="Alarm", font=26, fg='red', bg='white', command=partial(self.seeAlrm, alarm), pady=2, height=30, width=70, relief='ridge')
         b1.place(x=10, y=30, width=70, height=30)
