@@ -95,6 +95,7 @@ _res = []
 
 import serial.tools.list_ports
 
+ports = list(serial.tools.list_ports.comports())
 """
 for p,q,r in ports:
     if "USB" in q:
@@ -148,8 +149,8 @@ def beep(repeat):
         play_sound('submarine.wav')
         repeat -= 1
 
-# beep(1)
-# sys.exit()
+beep(1)
+sys.exit()
 
 def exit():
     """
@@ -342,19 +343,19 @@ class MotorControl:
         if self.checkMotor():
             read = self.client.read_holding_registers(0x007F, 0x200, unit=self.unit)
 
-            if read.isError():
+            if isinstance(read, pymodbus.pdu.ExceptionResponse):
                 print("!!! checkLimits: got modbus exception: ", ExceptionCodes.get(read.exception_code))
             else:
                 lim1 = read.registers[0] 
             
             read = self.client.read_holding_registers(0x007F, 0x400, unit=self.unit)
-            if read.isError():
+            if isinstance(read, pymodbus.pdu.ExceptionResponse):
                print("!!! checkLimits: got modbus exception: ", ExceptionCodes.get(read.exception_code))
             else:
                 lim2 = read.registers[0] 
 
             read = self.client.read_holding_registers(0x007F, 0x800, unit=self.unit)
-            if read.isError():
+            if isinstance(read, pymodbus.pdu.ExceptionResponse):
                 print("!!! checkLimits: got modbus exception: ", ExceptionCodes.get(read.exception_code))
             else:
                 lim3 = read.registers[0] 
@@ -368,10 +369,10 @@ class MotorControl:
             return READERROR
         return 0
 
-    def OldcheckMotor(self):
+    def checkMotor(self):
         """
         Return true if the motor is connected and client is not a modbusioException,
-        and true if we can read a register from the unit. Properly manages self.connect
+        and true if we can read a register from the unit
         """
         read = 0
 
@@ -382,35 +383,13 @@ class MotorControl:
                 return False
             # attempt to read a register - if we can't then we have a problem
             read = self.client.read_holding_registers(0x00D7, 1, unit=self.unit)
-            if read.isError():
+            if isinstance(read,  ModbusException):
                 print("!!! checkMotor: Modbus ioexception for unit ", self.unit)
                 self.connected = False
                 return False
             return True
         else:
             return False
-
-    def checkMotor(self):
-        """
-        Return true if the motor is connected and client is not a modbusioException,
-        and true if we can read a register from the unit. Properly manages self.connected.
-        Assumes motor is connected with self.connectMotor()
-        """
-        read = 0
-
-        if isinstance(self.client, ModbusException):
-            print("!!! checkMotor: Modbus ioexception for unit ", self.unit)
-            self.connected = False
-            return False
-        # attempt to read a register - if we can't then we have a problem
-        read = self.client.read_holding_registers(0x00D7, 1, unit=self.unit)
-        if read.isError():
-            print("!!! checkMotor: Modbus ioexception for unit ", self.unit)
-            self.connected = False
-            return False
-        else:
-            self.connected = True
-        return True
 
     def closeMotor(self):
         """
@@ -426,8 +405,6 @@ class MotorControl:
                 print("--- Close succeeded")
         except:
             print("!!! closeMotor: Can't close - exception thrown!")
-        self.connected = False
-        self.client = 0
         return
 
     def connectMotor(self):
@@ -439,44 +416,43 @@ class MotorControl:
 		:return client:
 		"""
         res = 0
-        #if self.connected:
-        #    return True
-
-        if TEST:
-            self.client = ModbusClient(method='rtu', baudrate=9600)
-            self.connected = True
+        if self.connected:
             return True
-    
-        self.client = ModbusClient(method='rtu', port=self.port, retries=100, timeout=0.5,
-                            rtscts=True, parity='E', baudrate=9600, strict=False, stopbits=2,
-                            unit=self.unit)
+
+        port = self.port
+        unit = self.unit
+
+        self.client = ModbusClient(method='rtu', port=port, retries=100, timeout=0.5,
+                            rtscts=True,parity='E',baudrate=9600,strict=False,stopbits=2,unit=unit)
                     
         if isinstance(self.client, ConnException):
-            print(f"!!! connectMotor: Connection error for unit {self.unit}")
-            # reset the object's state
-            self.client = 0
+            print("Connection error!")
             self.connected = False
-            return False
             
         if DBG:
-            print(f"--- connectMotor: Connecting to unit {self.unit}")
+            print("--- Connecting to unit ", self.unit)
         
         res = self.client.connect()
+
+        if TEST:
+            res = 1
+            self.connected = True
+            return True
+
         if res:
             self.connected = True
             if DBG:
-                print(f"--- connectMotor: Connected unit {self.unit}")
+                print("--- Connected ", unit)
             return True
         else:
             self.connected = False
-            self.client = 0
-            print(f"!!! Can't Connect unit {self.unit}")
+            if DBG:
+                print("--- Can't Connect ", unit)
             return False
 
     def jogMotor(self, delta):
         """
-		Adjust motor position by delta. Functions called within this routine
-        that read/write to the motor should NOT call connectMotor() or closeMotor().
+		Adjust motor position by delta.
 
 		:param delta: correction for new motor position
 		:return:
@@ -486,27 +462,21 @@ class MotorControl:
         speed = self.speed
 
         if DBG:
-            print(f"--- jogMotor Unit: {unit}, Delta: {delta}")
-        
-        if self.outOfRange(delta):
-            if DBG:
-                print("!!! jogMotor: JOG is out of range! Returning")
-            return
+            print("jogMotor", unit, delta)
+            print("CLIENT",unit,self.client)
 
         self.connectMotor()
-            
+        if self.outOfRange(delta):
+            if DBG:
+                print("JOG IS OUT OF RANGE RETURN")
+            self.closeMotor()
+            return
+        
         if self.checkMotor():
             self.chkAlrm()
- 
-            cp = self.readMotor()
-            if cp == READERROR:
-                print(f"!!! jogMotor cannot read unit {self.unit}")
-                mflag = 1
-                msg = "Motor " + str(unit) +" is not available"
-                message(unit, mflag, msg)
-                self.closeMotor()
-                return READERROR
             
+        if self.checkMotor():
+            cp = self.readMotor()
             jogPosition = int(delta) + cp
             self.client.write_register(0x7D, 0x20, unit=unit)
             self.client.write_register(0x0383, 1, unit=unit)
@@ -537,7 +507,7 @@ class MotorControl:
                 self.client.write_register(0x1803, jogPosition, unit=unit)
                 self.client.write_register(0x7D, 0x8, unit=unit)
                 rp = self.readDelay(jogPosition)
-            
+            self.closeMotor()
             if DBG:
                 print("--- Jog to",rp)
             log.debug(rp)
@@ -545,16 +515,14 @@ class MotorControl:
                pass
             # warn()
         else:
-            #rp = self.position
-            #jogPosition = int(delta) + rp
+            rp = self.position
+            jogPosition = int(delta) + rp
             mflag = 1
             msg = "Motor " + str(unit) +" is not available"
-            print(f"!!! jogMotor has an ioException for unit {self.unit}")
+            print("!!! jogMotor has an ioException for unit ", self.unit)
             message(unit, mflag, msg)
-            self.closeMotor()
-            return READERROR
+            return
 
-        self.closeMotor()
         if unit == 1:
             slidePos = T.getRadioButn(1, tab1, page[1])
             slide.set(slidePos)
@@ -575,11 +543,9 @@ class MotorControl:
         self.position = rp
         if DBG:
             print(f"--- JogHERE {unit} jogPosition = {rp}")
-        if jogPosition != rp:
+        if jogPosition != rp and self.client:
             if DBG:
-                print(f"??? jogMotor jogPos {jogPosition}, rp: {rp}")
-            return READERROR
-        return rp
+                print("???????",jogPosition,rp)
 
     def outOfRange(self, delta):
             global tk
@@ -589,7 +555,7 @@ class MotorControl:
             upper = self.upper
 
             if DBG:
-                print(f"--- POS: {pos}")
+                print("--- POS: ", pos)
             msg = str(pos + int(delta)) + " is Out of Range"
             flag = 0
             if pos + int(delta) < lower:
@@ -710,10 +676,7 @@ class MotorControl:
         windowHeight = temp.winfo_reqheight()
         positionRight = int(temp.winfo_screenwidth()/2 - windowWidth/1)
         positionDown = int(temp.winfo_screenheight()/2 - windowHeight/2)
-        
-        # temp.geometry("+{}+{}".format(positionRight, positionDown))
-        temp.geometry(f"+{positionRight}+{positionDown}")
-
+        temp.geometry("+{}+{}".format(positionRight, positionDown))
         if self.checkMotor() and self.connected or TEST:
             b = tk.Button(w, text='Reset', font='Ariel 15' , width=30, command = self.rstAlrm, anchor = S) 
         else:
@@ -727,7 +690,9 @@ class MotorControl:
         """
         Loop on reading the motor position until
         the 'unit' motor gets to the target position.
-        Only call this when you're sure the motor is available.
+        Only call this when you're sure the motor is available 
+        because it assumes you can read registers without error 
+        checking
 
         :param: target - motor destination position
         :return: motor position in user steps, READERROR if error
@@ -745,8 +710,7 @@ class MotorControl:
     
         rp = read.registers[0]
         if DBG:
-            print(f"--- readDelay IN {target} pos {rp}")
-
+            print("readDelay IN ", target, "pos",rp)
         delay = (abs(rp - target)) * 1.2 / speed
         ldelay = delay
         
@@ -763,7 +727,6 @@ class MotorControl:
             if ldelay < delay:
                 if DBG:
                     print("!!! readDelay: Motor going in wrong direction")
-                # do these 2 actually return a value we can check with isError()?
                 self.client.write_register(0x7D, 0x20, unit=unit)
                 self.client.write_register(0x7D, 0x0, unit=unit)
                 break
@@ -805,38 +768,35 @@ class MotorControl:
         global tk
         unit = self.unit
         position = self.position
+        motorOK = False
+        alarmOK = False
 
         if TEST:
             self.position = 1000
             return 1000
 
+        # log.debug("READING REGISTER ")
         self.connectMotor()
 
         if self.checkMotor():
             read = self.client.read_holding_registers(0x00D7, 1, unit=unit)
-            if read.isError():
+            if isinstance(read, ModbusException):
                 self.connected = False
                 self.closeMotor()
-                print(f"!!! Can't read registers from unit {self.unit}")
+                print("!!! Can't read registers from unit ", self.unit)
+                # put up a warning message
                 return READERROR
-            if DBG:
-                print(f"--- readMotor {self.unit} Loc: {position} Pos: {self.position}")
+            
             #upprpos = read.registers[0]
+            if DBG:
+                print(f"--- Read motor {unit} Loc: {position} Pos: {self.position}")
 
             read = self.client.read_holding_registers(0x00C7, 1, unit=unit)
-            if read.isError():
-                log.debug(read)
-                print(f"!!! - readMotor unit {self.unit}, ioException on read.")
-                self.connected = False
-                self.closeMotor()
-                return READERROR
-            else:
-                position = read.registers[0] 
+            log.debug(read)
+            position = read.registers[0] 
             self.closeMotor()
         else:
-            print(f"!!! - readMotor unit {self.unit}, checkMotor() failed.")
-            self.connected = False
-            self.closeMotor()
+            # warn()
             return READERROR
 
         self.position = position
@@ -1411,10 +1371,7 @@ class LocalIO:
         if DBG:
             print("readUser")
             print(filename)
-        #
-        # since this calls run() isn't this recursive? should it be -egs-
         updateTabs()
-
 
     def saveUser(self):
         """
@@ -2054,25 +2011,20 @@ class MakeTab:
 """
 Main loop, initialize.
 """
-# global variables
-# com ports
-# this can change based on the USB enumeration. it's com6 on babybear now
-port485 = "COM6"
-ports = list(serial.tools.list_ports.comports())
+#global variables
 
-if DBG2:
-    print("PORTS: ", ports)
-    i = 0
-    for p,q,r in ports:
-        i += 1
-        if r.find("FTDIBUS") >= 0:
-            print("RS485", "P", p, "Q", q, "R", r)
-            port485 = p
-        else:
-            print("MOTOR",i,"port",p)
-else:
-    pass
+# discover com port to RS485
+print("PORTS",ports)
+i = 0
+for p,q,r in ports:
+    i += 1
+    if r.find("FTDIBUS") >= 0:
+        print("RS485","P",p,"Q",q,"R",r)
+        port485=p
+    else:
+        print("MOTOR",i,"port",p)
 
+port485="COM6"
 
 """
 Motor check.
