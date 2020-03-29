@@ -593,7 +593,7 @@ class MotorControl:
             tk.Label(page[unit], font='Ariel 13' , foreground="#000000", text=msg).place(x=50, y=240, width=350, height=25)
         return flag
   
-    def chkAlrm(self):
+    def OchkAlrm(self):
         """
 		Check the given object for alarm conditions.
 		:return: alarm or READERROR otherwise. Assumes motor 
@@ -625,6 +625,48 @@ class MotorControl:
             beep(2)
 
         return alarm 
+
+    def chkAlrm(self):
+        """
+		Check the given object for alarm conditions.
+		:return: alarm or READERROR otherwise. Assumes motor 
+        is connected and readable.
+		"""
+
+        read = READERROR
+        alarm = 0
+
+        if isinstance(self.client, ModbusException):
+            return READERROR
+
+        if self.checkMotor():
+            if TEST:
+                alarm = 64
+            else:
+                read = self.client.read_holding_registers(0x007F, 1, unit=self.unit)
+                if read.isError():
+                    print(f"!!! checkAlrm: got modbus exception: {ExceptionCodes.get(read.exception_code)}")
+                    return READERROR
+                else:    
+                    alarm = read.registers[0] 
+        else:
+            print(f"!!! chkAlrm can't read unit {self.unit}")
+            return READERROR
+
+        if TEST:
+                alarm = 64
+        else:    
+            read = self.client.read_holding_registers(0x0081, 1, unit=self.unit)
+            if read.isError():
+                print(f"!!! readAlrm: got modbus exception: {ExceptionCodes.get(read.exception_code)}")
+            else:
+                alarm = read.registers[0]
+
+        beep(2)
+        b1 = tk.Button(main, text="Alarm", font=26, fg='red', bg='white', command=partial(self.showAlarm, alarm), pady=2, height=30, width=70, relief='ridge')
+        b1.place(x=10, y=30, width=70, height=30)
+        return alarm 
+    
 
     def rstAlrm(self):
         """
@@ -724,6 +766,9 @@ class MotorControl:
         global tk
         reps = 0
         atlimit = 0
+
+        # how many times total we try
+        maxTries = 5
     
         read = self.client.read_holding_registers(0x00C7, 1, unit=self.unit)
         if read.isError():
@@ -742,6 +787,9 @@ class MotorControl:
         
         while (rp != target):
             reps += 1
+            if DBG:
+                print(f"readDelay: attempt {reps}")
+
             delay = (abs(rp - target)) * 1.2 / self.speed
             if ldelay < delay:
                 if DBG:
@@ -750,10 +798,10 @@ class MotorControl:
                 self.client.write_register(0x7D, 0x20, unit=self.unit)
                 self.client.write_register(0x7D, 0x0, unit=self.unit)
                 break
-            if ldelay == delay and reps == 5:
+            if ldelay == delay and reps == maxTries:
                 if DBG:
-                    print(f"!!! readDelay: Motor not going from {rp} to {target}")
-                break
+                    print(f"!!! readDelay: max tries exceeded moving from {rp} to {target}. Return")
+                return READERROR
             
             if DBG:
                 print(f"--- Wait {delay} sec to goto {target} from {rp} at speed {self.speed}")
