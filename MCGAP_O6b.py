@@ -844,7 +844,6 @@ class MotorControl:
 
         """
         location = self.target
-
         if DBG:
             print("sendMotor", unit, location)
 
