@@ -537,7 +537,7 @@ class MotorControl:
                 self.client.write_register(0x1803, jogPosition, unit=unit)
                 self.client.write_register(0x7D, 0x8, unit=unit)
                 rp = self.readDelay(jogPosition)
-            
+            self.closeMotor()
             if DBG:
                 print("--- Jog to",rp)
             log.debug(rp)
