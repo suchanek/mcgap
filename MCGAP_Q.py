@@ -416,7 +416,7 @@ class MotorControl:
         try:
             self.client.close()
             if DBG:
-                print("--- closeMotor: Close succeeded")
+                print(f"--- closeMotor: Close for unit {self.unit} succeeded")
         except:
             print(f"!!! closeMotor: Can't close unit {self.unit}: exception thrown!")
         self.connected = False
@@ -537,9 +537,9 @@ class MotorControl:
                 self.client.write_register(0x1803, jogPosition, unit=self.unit)
                 self.client.write_register(0x7D, 0x8, unit=self.unit)
                 rp = self.readDelay(jogPosition)
-            else:
-                print(f"!!! jogMotor: can't connect to unit {self.unit} Return")
-                return READERROR
+        else:
+            print(f"!!! jogMotor: can't connect to unit {self.unit} Return")
+            return READERROR
 
         self.closeMotor()
 
@@ -959,6 +959,8 @@ class MotorControl:
         else:
             print("!!! sendMotor: can't connect to unit {self.unit}. Return")
             return READERROR
+        
+        self.closeMotor()
 
         Location[self.unit] = rp
         I.setEntry(self.unit, rp)
@@ -967,7 +969,7 @@ class MotorControl:
        
         self.position = rp
         if DBG:
-            print(f"--- sendMotor {self.unit} {self.position} Speed {self.speed} succeded")
+            print(f"--- sendMotor {self.unit} {self.position} Speed {self.speed} succeeded")
         
         # all good, return the final position
         return rp
