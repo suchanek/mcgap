@@ -403,7 +403,7 @@ class MotorControl:
                 print("--- closeMotor: Close succeeded")
         except:
             print(f"!!! closeMotor: Can't close unit {self.unit}: exception thrown!")
-        self.connected = False
+        #self.connected = False
         self.client = 0
         return
 
