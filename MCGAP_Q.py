@@ -116,42 +116,22 @@ DFLT_FILENAME = "GAPMC.dft"
 DFLT_PATH = PATH.joinpath(DFLT_FILENAME)
 DFLT_POSIX = DFLT_PATH.as_posix()
 
-from pydub import AudioSegment  
-from pydub.playback import play
+
+import simpleaudio as sa
 
 def play_sound(sound_file):
-    song = AudioSegment.from_wav(sound_file)
-    play(song)
+    wave_obj = sa.WaveObject.from_wave_file(sound_file)
+    play_obj = wave_obj.play()
+    play_obj.wait_done()
     return
 
-'''
-def play_sound(sound_file):
-    """Plays the audio file that is at the fully qualified path `sound_file`"""
-    system = platform.system()
-    if system == "Windows":
-        import winsound
-        winsound.PlaySound(sound_file,
-                           winsound.SND_FILENAME | winsound.SND_ASYNC)
-    elif system == "Darwin":  # macOS
-        from AppKit import NSSound
-        from Foundation import NSURL
-        cwd = os.getcwd()
-        url = NSURL.URLWithString_("file://" + sound_file)
-        NSSound.alloc().initWithContentsOfURL_byReference_(url, True).play()
-    else:  # Linux
-        import subprocess
-        command = ["aplay", sound_file]
-        subprocess.Popen(
-            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            bufsize=0, universal_newlines=True) 
-'''
 def beep(repeat):
     while repeat:
-        #play_sound('submarine.wav')
+        play_sound('submarine.wav')
         repeat -= 1
 
-# beep(1)
-# sys.exit()
+#beep(1)
+#sys.exit()
 
 def exit():
     """
