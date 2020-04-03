@@ -127,7 +127,7 @@ def play_sound(sound_file):
 
 def beep(repeat):
     while repeat:
-        play_sound('submarine.wav')
+        play_sound('ping.wav')
         repeat -= 1
 
 #beep(1)
@@ -597,31 +597,32 @@ class MotorControl:
         read = READERROR
         alarm = 0
 
-        
         if isinstance(self.client, ModbusException):
             return READERROR
+    
+        read = self.client.read_holding_registers(0x007F, 1, unit=self.unit)
+        if read.isError():
+            print(f"!!! checkAlrm: got modbus exception: {ExceptionCodes.get(read.exception_code)}")
+            return READERROR
+        else:    
+            alarm = read.registers[0] # returned 32 with normal operation
+            read = self.client.read_holding_registers(0x0081, 1, unit=self.unit)
+            if read.isError():
+                print(f"!!! checkAlrm: got modbus exception: {ExceptionCodes.get(read.exception_code)}")
+                return False
+            else:
+                alarm = read.registers[0]
 
         if TEST:
             alarm = 64
-            return 64
-        else:
-            read = self.client.read_holding_registers(0x007F, 1, unit=self.unit)
-            if read.isError():
-                print(f"!!! checkAlrm: got modbus exception: {ExceptionCodes.get(read.exception_code)}")
-                return READERROR
-            else:    
-                alarm = read.registers[0] # returned 16392
-                read = self.client.read_holding_registers(0x0081, 1, unit=self.unit)
-                if read.isError():
-                    print(f"!!! readAlrm: got modbus exception: {ExceptionCodes.get(read.exception_code)}")
-                    return False
-                else:
-                    alarm = read.registers[0]
 
-        #beep(2)
+        #alarm = 64
         if alarm:
-            b1 = tk.Button(main, text="Alarm", font=26, fg='red', bg='white', command=partial(self.showAlarm, alarm), pady=2, height=30, width=70, relief='ridge')
-            b1.place(x=10, y=30, width=70, height=30)
+            #beep(1)
+            #b1 = tk.Button(main, text="Alarm", font=26, fg='red', bg='white', command=partial(self.showAlarm, alarm), pady=2, height=30, width=70, relief='ridge')
+            #b1.place(x=10, y=30, width=70, height=30)
+            self.showAlarm(alarm)
+           
         return alarm 
     
 
@@ -629,7 +630,7 @@ class MotorControl:
         """
 		Reset the alarm for the object.
 		:return: True if reset, False if unable to reset, or READERROR otherwise. 
-        Manages connection/disconnect
+        Assumes the motor is connected and available.
 		"""
         global TEST
 
@@ -637,53 +638,19 @@ class MotorControl:
             return False
 
         # you can only write registers if the motor is available.
-        if self.connectMotor():
-            if not TEST:
-                self.chkAlrm()
-                self.client.write_register(0x7D, 0x80, unit=self.unit)
-                self.client.write_register(0x7D, 0x0, unit=self.unit)
-            else:
-                TEST = 0
-                self.closeMotor()
-                return True
-            self.closeMotor()
+
+        if not TEST:
+            self.client.write_register(0x7D, 0x80, unit=self.unit)
+            self.client.write_register(0x7D, 0x0, unit=self.unit)
         else:
-            print(f"!!! rstAlrm: Can't connect to unit: {self.unit}")
-            return False
-
-    def readAlrm(self):
-        """
-        Check for error of the 'unit' motor. Assumes motor is connected and available.
-
-        :return: motor error status, READERROR otherwise
-        """
-        global _mode
-        unit = self.unit
-        alarm = 0
-    
-        # This should always be true at this point, but check anyway
-        if self.connectMotor():
-            if TEST:
-                alarm = 99
-            else:
-                read = self.client.read_holding_registers(0x0081, 1, unit=self.unit)
-                if read.isError():
-                    print(f"!!! readAlrm: got modbus exception: {ExceptionCodes.get(read.exception_code)}")
-                else:
-                    alarm = read.registers[0]
-        else:
-            print("!!! readAlrm: can't read motor!")
-            return READERROR
-
-        b1 = tk.Button(main, text="Alarm", font=26, fg='red', bg='white', command=partial(self.showAlarm, alarm), pady=2, height=30, width=70, relief='ridge')
-        b1.place(x=10, y=30, width=70, height=30)
-        return alarm
-        
+            TEST = 0
+            return True
+       
     def showAlarm(self, error):
-        warn2 = "Motor " + str(self.unit) + " is NOT available."
-        warn3 = "and shows error " + str(error) + "."
+        warn2 = f"Motor {self.unit} has an alarm: {error}"
+        warn3 = ""
         warn4 = ""
-
+       
         # NEED A DICTIONARY FOR NESSAGES
         if error == 99:
             warn4 = "Motor driver is unreachable. Check power."
@@ -702,13 +669,16 @@ class MotorControl:
         
         # temp.geometry("+{}+{}".format(positionRight, positionDown))
         temp.geometry(f"+{positionRight}+{positionDown}")
+        #self.connectMotor()
 
-        if self.connected or TEST:
-            b = tk.Button(w, text='Reset', font='Ariel 15' , width=30, command = self.rstAlrm, anchor = S) 
-        else:
-            b = tk.Button(w, text='Okay', font='Ariel 15' , width=30, command = temp.destroy, anchor = S) 
+        b = tk.Button(w, text='Reset', font='Ariel 13' , width=30, command = self.rstAlrm, anchor = S) 
+        b2 = tk.Button(w, text='Okay', font='Ariel 13' , width=30, command = temp.destroy, anchor = S) 
+        #self.closeMotor()
         b.configure(width = 10, activebackground = "#BBBBBB")
-        b.place(x=120,y=120)
+        b2.configure(width = 10, activebackground = "#BBBBBB")
+        b.place(x=20, y=100)
+        b2.place(x=180, y=100)
+        beep(1)
         temp.mainloop()
         temp.destroy
 
@@ -1302,8 +1272,9 @@ class LocalIO:
         tmp3 = copy.deepcopy(tab3)
         tmp4 = copy.deepcopy(tab4)
 
-        if DBG:
-            print(filename)
+        if DBG2:
+            print(f"Default file is: {filename}")
+
         main.title('GAP Motor Control: using ' + str(filename))
         main.title('DEFAULT settings: ' + str(filename))
         main.config()
