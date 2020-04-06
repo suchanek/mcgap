@@ -45,7 +45,7 @@ _mode = 0
 limitSet = "Show"
 # i don't know if this is right but DISABLE is used and wasn't defined globally
 DISABLE = 0
-TEST = 0
+TEST = 1
 DBG = 1
 DBG2 = 0
 
@@ -335,6 +335,9 @@ class MotorControl:
         """ 
         lim1 = lim2 = lim3 = 0
 
+        if TEST:
+            return 0
+
         if isinstance(self.client, ModbusException):
             self.connected = False
             return READERROR
@@ -359,6 +362,7 @@ class MotorControl:
         else:
             lim3 = read.registers[0] 
         
+        # note that we are not actually getting limits properly yet, so i just return 0
         if lim1 or lim2 or lim3:
             self.stopMotor()
             return 0
@@ -371,6 +375,10 @@ class MotorControl:
         Assumes motor is connected with self.connectMotor()
         """
         read = 0
+
+        if TEST:
+            self.connected = TRUE
+            return True
 
         if isinstance(self.client, ModbusException):
             print("!!! checkMotor: Modbus ioexception for unit ", self.unit)
@@ -393,6 +401,11 @@ class MotorControl:
 		:param unit:
 		:return:
 		"""
+        if TEST:
+            self.connected = False
+            self.client = 0
+            return
+        
         try:
             self.client.close()
             if DBG:
@@ -408,7 +421,6 @@ class MotorControl:
 		Connect to motor unit
 
 		:rtype: object
-		:param unit:
 		:return: True if success, False otherwise
 		"""
         res = 0
@@ -464,7 +476,15 @@ class MotorControl:
                 print("!!! jogMotor: JOG is out of range! Returning")
             return READERROR
 
+        if TEST:
+            self.position = self.position + int(delta)
+            Location[self.unit] = self.position
+            I.setEntry(self.unit, self.position)
+            T.setLabel(self.unit, self.position)
+            return self.position
+
         cp = self.readMotor()
+        jogPosition = int(delta) + cp     
 
         if cp == READERROR:
             print(f"!!! jogMotor cannot read unit {self.unit}")
@@ -472,8 +492,6 @@ class MotorControl:
             message(self.unit, 1, msg)
             return READERROR
 
-        jogPosition = int(delta) + cp                
-        
         if self.connectMotor():
             self.chkAlrm()
             self.client.write_register(0x7D, 0x20, unit=self.unit)
@@ -544,7 +562,8 @@ class MotorControl:
         I.setEntry(self.unit, rp)
         T.setLabel(self.unit, rp)
 
-        self.position = rp
+        # don't need this since set in readdelay
+        # self.position = rp
         if DBG:
             print(f"--- JogHERE {unit} jogPosition = {rp}")
         if jogPosition != rp:
@@ -597,6 +616,9 @@ class MotorControl:
         read = READERROR
         alarm = 0
 
+        if TEST:
+            return 0
+
         if isinstance(self.client, ModbusException):
             return READERROR
     
@@ -618,9 +640,6 @@ class MotorControl:
 
         #alarm = 64
         if alarm:
-            #beep(1)
-            #b1 = tk.Button(main, text="Alarm", font=26, fg='red', bg='white', command=partial(self.showAlarm, alarm), pady=2, height=30, width=70, relief='ridge')
-            #b1.place(x=10, y=30, width=70, height=30)
             self.showAlarm(alarm)
            
         return alarm 
@@ -648,9 +667,7 @@ class MotorControl:
        
     def showAlarm(self, error):
         warn2 = f"Motor {self.unit} has an alarm: {error}"
-        warn3 = ""
-        warn4 = ""
-       
+        
         # NEED A DICTIONARY FOR NESSAGES
         if error == 99:
             warn4 = "Motor driver is unreachable. Check power."
@@ -658,22 +675,19 @@ class MotorControl:
         temp.wm_title('ALARM')
         w = Canvas(temp, width=340, height=150)
         w.pack()
-        w.create_text(170,15,text='ERROR:',font='Ariel 13' ,fill="#FF0000")
-        w.create_text(170,45,text=warn2,font='Ariel 13' )
-        w.create_text(170,70,text=warn3,font='Ariel 13' )
-        w.create_text(170,95,text=warn4,font='Ariel 13' )
+        w.create_text(170, 15, text='ERROR:', font='Ariel 13' , fill="#FF0000")
+        w.create_text(170, 45, text=warn2, font='Ariel 13' )
+        w.create_text(170, 70, text="", font='Ariel 13' )
+        w.create_text(170, 95, text="", font='Ariel 13' )
         windowWidth = temp.winfo_reqwidth()
         windowHeight = temp.winfo_reqheight()
         positionRight = int(temp.winfo_screenwidth()/2 - windowWidth/1)
         positionDown = int(temp.winfo_screenheight()/2 - windowHeight/2)
         
-        # temp.geometry("+{}+{}".format(positionRight, positionDown))
         temp.geometry(f"+{positionRight}+{positionDown}")
-        #self.connectMotor()
-
+        
         b = tk.Button(w, text='Reset', font='Ariel 13' , width=30, command = self.rstAlrm, anchor = S) 
         b2 = tk.Button(w, text='Okay', font='Ariel 13' , width=30, command = temp.destroy, anchor = S) 
-        #self.closeMotor()
         b.configure(width = 10, activebackground = "#BBBBBB")
         b2.configure(width = 10, activebackground = "#BBBBBB")
         b.place(x=20, y=100)
@@ -710,7 +724,8 @@ class MotorControl:
 
         delay = (abs(rp - target)) * 1.2 / self.speed
         ldelay = delay
-        msg = "Wait " + str(int(10.0 * delay) / 10.0) + " sec"
+        #msg = "Wait " + str(int(10.0 * delay) / 10.0) + " sec"
+        msg = f"Wait {int(10.0 * delay) / 10.0} sec"
         
         tk.Label(page[self.unit], font='Ariel 13' , foreground="#FF0000", text=msg).place(x=90, y=10, width=350, height=25)
         
@@ -766,7 +781,6 @@ class MotorControl:
     def readMotor(self):
         """
 		Read the position of the 'unit' motor. Manages its own connect/disconnct.
-        Manages its own connections.
 
 		:Return position or READERROR if any exceptions
 		"""
@@ -775,7 +789,7 @@ class MotorControl:
 
         if TEST:
             self.position = 1000
-            return 1000
+            return self.position
 
         if self.connectMotor():
             # Gary - do we need this codeblock since we never actually use the result - upprpos
@@ -795,9 +809,8 @@ class MotorControl:
             if read.isError():
                 log.debug(read)
                 print(f"!!! - readMotor unit {self.unit}, ioException on read.")
-                self.connected = False
-                # emergency close. not sure if this will propagate badly
-                self.closeMotor()
+                # self.connected = False
+                # self.closeMotor()
                 return READERROR
             else:
                 position = read.registers[0] 
@@ -812,7 +825,7 @@ class MotorControl:
         T.setLabel(self.unit, position)
         
         self.closeMotor()
-        return position
+        return self.position
 
     def getTarget(self):
         """
@@ -839,6 +852,13 @@ class MotorControl:
         delta = 0
         rp = 0
 
+        if TEST:
+            self.position = self.target
+            Location[self.unit] = self.position
+            I.setEntry(self.unit, self.position)
+            T.setLabel(self.unit, self.position)
+            return self.position
+
         if DBG:
             print(f"--- sendMotor: Sending unit {self.unit}, to {self.position}")
 
@@ -850,10 +870,10 @@ class MotorControl:
             message(self.unit, 1, msg)
             return READERROR
         
-        if TEST:
-            pos = 1000
-        
         delta = self.target - pos
+
+        if delta == 0:
+            return self.position
 
         if int(delta) > 0:
             if DBG2:
@@ -2043,8 +2063,10 @@ Main loop, initialize.
 # this can change based on the USB enumeration. it's com6 on babybear now
 port485 = "COM6"
 ports = list(serial.tools.list_ports.comports())
+#print(ports)
 
-if DBG2:
+
+if DBG:
     print("PORTS: ", ports)
     i = 0
     for p,q,r in ports:
@@ -2064,26 +2086,15 @@ Motor check.
 F = LocalIO()
 F.readConfig()
 
-
 # do full initialization of the object. no global vars.
 M1 = MotorControl(1, port485, 1000,   0, 1000,   3000, 0, 8000)
 M2 = MotorControl(2, port485, 100,   0, 1000,      0, 0, 1000)
 M3 = MotorControl(3, port485, 10000, 0, 100000, 1000, 0, 12500)
 M4 = MotorControl(4, port485, 10000, 0, 100000, 1000, 0, 150000)
-'''
-M1.connectMotor()
-M1.closeMotor()
-M2.connectMotor()
-M2.closeMotor()
-M3.connectMotor()
-M3.closeMotor()
-M4.connectMotor()
-M4.closeMotor()
-'''
 
-if not TEST and not M1.isAvailable() and not M2.isAvailable() and not M3.isAvailable() and not M4.isAvailable():
-        warn()
-        exit()
+if not TEST and not (M1.isAvailable() and M2.isAvailable() and M3.isAvailable() and M4.isAvailable()):
+    warn()
+    exit()
 
 
 """
