@@ -5,6 +5,13 @@ from tkinter import *
 from tkinter.filedialog   import askopenfilename
 from tkinter.filedialog   import asksaveasfilename
 from tkinter import ttk
+import serial.tools.list_ports
+
+import pymodbus.exceptions
+from pymodbus.exceptions import ModbusIOException as ModbusException
+from pymodbus.exceptions import ConnectionException as ConnException
+
+import simpleaudio as sa
 
 from functools import partial
 import serial
@@ -19,9 +26,6 @@ import logging
 import copy
 from time import sleep
 
-import pymodbus.exceptions
-from pymodbus.exceptions import ModbusIOException as ModbusException
-from pymodbus.exceptions import ConnectionException as ConnException
 
 FORMAT = ('%(asctime)-15s %(threadName)-15s '
           '%(levelname)-8s %(module)-15s:%(lineno)-8s %(message)s')
@@ -84,7 +88,7 @@ page = ["page[0]", "page[1]", "page[2]", "page[3]", "page[4]"]
 _ref = []
 _res = []
 
-import serial.tools.list_ports
+
 
 """
 for p,q,r in ports:
@@ -106,7 +110,7 @@ DFLT_PATH = PATH.joinpath(DFLT_FILENAME)
 DFLT_POSIX = DFLT_PATH.as_posix()
 
 
-import simpleaudio as sa
+
 
 def play_sound(sound_file):
     wave_obj = sa.WaveObject.from_wave_file(sound_file)
