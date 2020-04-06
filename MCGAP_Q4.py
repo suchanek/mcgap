@@ -45,7 +45,7 @@ _mode = 0
 limitSet = "Show"
 # i don't know if this is right but DISABLE is used and wasn't defined globally
 DISABLE = 0
-TEST = 1
+TEST = 0
 DBG = 1
 DBG2 = 0
 
@@ -105,17 +105,17 @@ DFLT_PATH = PATH.joinpath(DFLT_FILENAME)
 DFLT_POSIX = DFLT_PATH.as_posix()
 
 
-#import simpleaudio as sa
+import simpleaudio as sa
 
-#def play_sound(sound_file):
-#    wave_obj = sa.WaveObject.from_wave_file(sound_file)
-#    play_obj = wave_obj.play()
-#    play_obj.wait_done()
-#    return
+def play_sound(sound_file):
+    wave_obj = sa.WaveObject.from_wave_file(sound_file)
+    play_obj = wave_obj.play()
+    play_obj.wait_done()
+    return
 
 def beep(repeat):
     while repeat:
-#        play_sound('ping.wav')
+        play_sound('ping.wav')
         repeat -= 1
 
 #beep(10)
