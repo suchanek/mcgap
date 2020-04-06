@@ -130,8 +130,8 @@ def beep(repeat):
         play_sound('ping.wav')
         repeat -= 1
 
-#beep(10)
-#sys.exit()
+beep(10)
+sys.exit()
 
 def exit():
     """
@@ -498,6 +498,12 @@ class MotorControl:
             alarm = self.chkAlrm()
             if alarm:
                 self.showAlarm(alarm)
+            
+            alarm = self.chkAlrm()
+            # alarm has not been reset
+            if alarm:
+                self.closeMotor()
+                return READERROR
 
             self.client.write_register(0x7D, 0x20, unit=self.unit)
             self.client.write_register(0x0383, 1, unit=self.unit)
@@ -642,11 +648,6 @@ class MotorControl:
 
         if TEST:
             alarm = 64
-
-        #alarm = 64
-        #if alarm:
-        #    self.showAlarm(alarm)
-           
         return alarm 
     
 
@@ -1838,8 +1839,6 @@ class TabControl:
             if (unit == 4):
                 pos4 = tabN
 
-
-
 class MakeTab:
     '''
     '''
@@ -1950,7 +1949,7 @@ class MakeTab:
         tk.Label(page[3], font='Ariel 13' , text="Current location").place(x=30, y=100, width=150, height=25)
         tk.Label(page[3], font='Ariel 13' , text="Enter new location").place(x=30, y=150, width=150, height=25)
         tk.Label(page[3], font='Ariel 13' , text="Jog").place(x=350, y=jogS, width=150, height=25)
-        tk.Label(page[3], font=10, text="2500 steps per 9" + u"\u00b0").place(x=-10, y=200, width=250, height=25)
+        tk.Label(page[3], font=10, text="2500 steps per 9" + u"\u00b0").place(x=30, y=200, width=150, height=25)
 
         row = 0
         for line in tab3:
