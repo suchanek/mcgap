@@ -130,8 +130,8 @@ def beep(repeat):
         play_sound('ping.wav')
         repeat -= 1
 
-beep(10)
-sys.exit()
+#beep(10)
+#sys.exit()
 
 def exit():
     """
@@ -1861,7 +1861,7 @@ class MakeTab:
 
         tk.Label(page[1], font='Ariel 13' , text="Current location").place(x=190, y=70, width=150, height=25)
         tk.Label(page[1], font='Ariel 13' , text="Enter new location").place(x=190, y=140, width=150, height=25)
-        tk.Label(page[1], font='Ariel 13' , text="Jog").place(x=350, y=jogS, width=150, height=25)
+        tk.Label(page[1], font='Ariel 13' , text="Jog").place(x=380, y=jogS, width=100, height=25)
 
         row = 0
         for line in tab1:
@@ -1905,7 +1905,7 @@ class MakeTab:
 
         tk.Label(page[2], font='Ariel 13' , text="Current location").place(x=190, y=70, width=150, height=25)
         tk.Label(page[2], font='Ariel 13' , text="Enter new location").place(x=190, y=140, width=150, height=25)
-        tk.Label(page[2], font='Ariel 13' , text="Jog").place(x=350, y=jogS, width=150, height=25)
+        tk.Label(page[2], font='Ariel 13' , text="Jog").place(x=380, y=jogS, width=100, height=25)
 
         row = 0
         for line in tab2:
@@ -1948,7 +1948,7 @@ class MakeTab:
         tk.Label(page[3], font='Ariel 13' , text="Grating 1 angle is").place(x=30, y=50, width=150, height=25)
         tk.Label(page[3], font='Ariel 13' , text="Current location").place(x=30, y=100, width=150, height=25)
         tk.Label(page[3], font='Ariel 13' , text="Enter new location").place(x=30, y=150, width=150, height=25)
-        tk.Label(page[3], font='Ariel 13' , text="Jog").place(x=350, y=jogS, width=150, height=25)
+        tk.Label(page[3], font='Ariel 13' , text="Jog").place(x=380, y=jogS, width=100, height=25)
         tk.Label(page[3], font=10, text="2500 steps per 9" + u"\u00b0").place(x=30, y=200, width=150, height=25)
 
         row = 0
@@ -2000,7 +2000,7 @@ class MakeTab:
         tk.Label(page[4], font='Ariel 13' , text="Grating 2 angle is").place(x=30, y=50, width=150, height=25)
         tk.Label(page[4], font='Ariel 13' , text="Current location").place(x=30, y=100, width=150, height=25)
         tk.Label(page[4], font='Ariel 13' , text="Enter new location").place(x=30, y=150, width=150, height=25)
-        tk.Label(page[4], font='Ariel 13' , text="Jog").place(x=350, y=jogS, width=150, height=25)
+        tk.Label(page[4], font='Ariel 13' , text="Jog").place(x=380, y=jogS, width=100, height=25)
         tk.Label(page[4], font=10, text="2500 steps per 9" + u"\u00b0").place(x=-10, y=200, width=250, height=25)
 
         row = 0
