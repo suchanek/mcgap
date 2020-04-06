@@ -467,6 +467,7 @@ class MotorControl:
         global tk
         cp = READERROR
         unit = self.unit
+        alarm = 0
 
         if DBG:
             print(f"--- jogMotor Unit: {self.unit}, Delta: {delta}")
@@ -493,7 +494,11 @@ class MotorControl:
             return READERROR
 
         if self.connectMotor():
-            self.chkAlrm()
+            # needs error checking against alarm
+            alarm = self.chkAlrm()
+            if alarm:
+                self.showAlarm(alarm)
+
             self.client.write_register(0x7D, 0x20, unit=self.unit)
             self.client.write_register(0x0383, 1, unit=self.unit)
             self.client.write_register(0x1805, self.speed, unit=self.unit)
@@ -639,8 +644,8 @@ class MotorControl:
             alarm = 64
 
         #alarm = 64
-        if alarm:
-            self.showAlarm(alarm)
+        #if alarm:
+        #    self.showAlarm(alarm)
            
         return alarm 
     
@@ -851,6 +856,7 @@ class MotorControl:
         pos = READERROR
         delta = 0
         rp = 0
+        alarm = 0
 
         if TEST:
             self.position = self.target
@@ -894,7 +900,11 @@ class MotorControl:
             print("--- sendmMotor: SEND WRITE TRY ", self.unit, " TO ", setPosition)
         
         if self.connectMotor():
-            self.chkAlrm()   
+            # needs error checking against alarm
+            alarm = self.chkAlrm()
+            if alarm:
+                self.showAlarm(alarm)
+
             self.client.write_register(0x7D, 0x20, unit=self.unit)
             self.client.write_register(0x1801, 1, unit=self.unit)
             self.client.write_register(0x0383, 1, unit=self.unit)
@@ -1187,7 +1197,7 @@ class InputControl:
             str1.trace("w", lambda name, index, mode, sv=str1: I.callback(str1, t, 200, 100))
             e[t] = tk.Entry(page[t], font='Ariel 12', textvariable=str1, bg="#FFFFFF", validate="focusout",
                             validatecommand=I.callback(str1, t, 200, 100), justify='right')
-            e[t].place(x=210, y=195, width=60, height=20)
+            e[t].place(x=210, y=150, width=60, height=20)
 
 
 
@@ -1766,7 +1776,7 @@ class TabControl:
         pos3 = tab3
         pos4 = tab4
 
-    def setLabel(self, t, position, x=215, y=105):
+    def setLabel(self, t, position, x=215, y=100):
         """
         Display the motor position
         """
@@ -1778,7 +1788,7 @@ class TabControl:
                 e1.place(x=x + 20, y=y, width=60, height=20)
             if t > 2:
                 e1 = tk.Label(page[t], font='Ariel 12', bg="#FFFFFF", text=position, justify='right')
-                e1.place(x=x - 5, y=y + 20, width=60, height=20)
+                e1.place(x=x - 5, y=y, width=60, height=20)
                 #e1.place(x=210, y=195, width=60, height=20)
         except:
             return
@@ -1937,10 +1947,10 @@ class MakeTab:
         jogN = len(jog3); jogR = jogN * 20; jogS = 110 - jogR / 4
 
         tk.Label(page[3], font='Ariel 13' , text="Grating 1 angle is").place(x=30, y=50, width=150, height=25)
-        tk.Label(page[3], font='Ariel 13' , text="Current location").place(x=30, y=120, width=150, height=25)
-        tk.Label(page[3], font='Ariel 13' , text="Enter new location").place(x=30, y=190, width=150, height=25)
+        tk.Label(page[3], font='Ariel 13' , text="Current location").place(x=30, y=100, width=150, height=25)
+        tk.Label(page[3], font='Ariel 13' , text="Enter new location").place(x=30, y=150, width=150, height=25)
         tk.Label(page[3], font='Ariel 13' , text="Jog").place(x=350, y=jogS, width=150, height=25)
-        tk.Label(page[3], font=10, text="2500 steps per 9" + u"\u00b0").place(x=-10, y=215, width=250, height=25)
+        tk.Label(page[3], font=10, text="2500 steps per 9" + u"\u00b0").place(x=-10, y=200, width=250, height=25)
 
         row = 0
         for line in tab3:
@@ -1950,7 +1960,7 @@ class MakeTab:
                 else:
                     name = line[3]
                 tk.Radiobutton(page[3], font='Ariel 13' , text=name, command=partial(M3.setMotor, 3), padx=20,
-                           variable=grate1, value=row, anchor='w').place(x=20, y=75+20*row, width=150, height=25)
+                           variable=grate1, value=row, anchor='w').place(x=20, y=50+20*row, width=150, height=25)
                 row = row + 1
             if line[1] == 'res':
                 Resolution[self.unit] = int(line[2])
@@ -1973,7 +1983,7 @@ class MakeTab:
                     #tk.Label(page[3], font='Ariel 12', text=st).place(x=476, y=jogS+30+row2*20, width=50, height=22)
                     row2 = row2 + 1
 
-        tk.Button(page[3], font='Ariel 13' , text="Go", fg="red", command=partial(M3.getTarget), padx=40).place(x=225, y=160, width=30, height=20)
+        tk.Button(page[3], font='Ariel 13' , text="Go", fg="red", command=partial(M3.getTarget), padx=40).place(x=275, y=150, width=30, height=20)
 
     def tablet4(self):
         """
@@ -1989,10 +1999,10 @@ class MakeTab:
         jogN = len(jog4); jogR = jogN * 20; jogS = 110 - jogR / 4
 
         tk.Label(page[4], font='Ariel 13' , text="Grating 2 angle is").place(x=30, y=50, width=150, height=25)
-        tk.Label(page[4], font='Ariel 13' , text="Current location").place(x=30, y=120, width=150, height=25)
-        tk.Label(page[4], font='Ariel 13' , text="Enter new location").place(x=30, y=190, width=150, height=25)
+        tk.Label(page[4], font='Ariel 13' , text="Current location").place(x=30, y=100, width=150, height=25)
+        tk.Label(page[4], font='Ariel 13' , text="Enter new location").place(x=30, y=150, width=150, height=25)
         tk.Label(page[4], font='Ariel 13' , text="Jog").place(x=350, y=jogS, width=150, height=25)
-        tk.Label(page[4], font=10, text="2500 steps per 9" + u"\u00b0").place(x=-10, y=215, width=250, height=25)
+        tk.Label(page[4], font=10, text="2500 steps per 9" + u"\u00b0").place(x=-10, y=200, width=250, height=25)
 
         row = 0
         for line in tab4:
@@ -2021,7 +2031,7 @@ class MakeTab:
                           relief='ridge').place(x=428, y=jogS+30+row2*20, width=50, height=22)
                     row2 = row2 + 1
 
-        tk.Button(page[4], font='Ariel 13' , text="Go", fg="red", command=partial(M4.getTarget), padx=40).place(x=225, y=160, width=30, height=20)
+        tk.Button(page[4], font='Ariel 13' , text="Go", fg="red", command=partial(M4.getTarget), padx=40).place(x=275, y=150, width=30, height=20)
 
     def warntab(self, unit):
         """
