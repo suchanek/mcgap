@@ -51,7 +51,7 @@ _mode = 0
 limitSet = "Show"
 # i don't know if this is right but DISABLE is used and wasn't defined globally
 DISABLE = 0
-TEST = 0
+TEST = 1
 DBG = 1
 DBG2 = 0
 mflag = 0
@@ -169,7 +169,6 @@ def message(unit, mflag, msg):
 
 
 def warn():
-    global windowWidth, windowHeight, positionRight, positionDown
     warn2 = "No motor is available."
     warn3 = "Connect and turn on motors."
     temp = tk.Tk()
@@ -287,7 +286,7 @@ class MotorControl:
 	This class contains motor attributes and methods
 	"""
 
-    def __init__(self, unit, port, speed, position, resolution, zero, lower, upper):
+    def __init__(self, unit, port, speed, position, zero, lower, upper):
         """
         :rtype: object
         """
@@ -295,10 +294,12 @@ class MotorControl:
         self.port = port
         self.speed = speed
         self.position = position # current step position
-        self.resolution = resolution
+        self.resolution = 1000
         self.zero = zero
         self.lower = lower
         self.upper = upper
+        self.stp = 1
+        self.deg = 1
         # make the correct object, don't try to connect
         self.client = ModbusClient(method='rtu')
         self.target = 0 # targeted step location
@@ -499,7 +500,7 @@ class MotorControl:
                 return READERROR
 
             self.client.write_register(0x7D, 0x20, unit=self.unit)
-            self.client.write_register(0x0383, 1, unit=self.unit)
+            #self.client.write_register(0x0383, 1, unit=self.unit)
             self.client.write_register(0x1805, self.speed, unit=self.unit)
 
             if int(delta) > 0:
@@ -892,7 +893,7 @@ class MotorControl:
 
             self.client.write_register(0x7D, 0x20, unit=self.unit)
             self.client.write_register(0x1801, 1, unit=self.unit)
-            self.client.write_register(0x0383, 1, unit=self.unit)
+            #self.client.write_register(0x0383, 1, unit=self.unit)
             self.client.write_register(0x1805, self.speed, unit=self.unit)
             self.client.write_register(0x1803, setPosition, unit=self.unit)
             self.client.write_register(0x7D, 0x8, unit=self.unit)
@@ -938,6 +939,42 @@ class MotorControl:
 
         # all good, return the final position
         return rp
+
+    def setGearing(self, gearA, gearB, gearBox):
+        """
+        Set the Electronic Gearing to adjust the resolution
+
+        Resolution = 1000 X GearB / GearA * GearBox [= 100 for gratings]
+        
+        """
+        # verify requested gearing is integer and adjust gearB if needed
+        condition = 1000.0 * float(gearB) / float(gearA) * float(gearBox)
+        if condition - int(condition) != 0:
+            gearB = int(condition / 1000.0 * float(gearA) / float(gearBox))
+
+        self.resolution = int(1000 * gearB / gearA * gearBox)
+        Resolution[self.unit] = self.resolution
+        if DBG:
+            print(f"--- setGearing: Adjusted gearB to {gearB}")
+            print(f"Motor", self.unit, "Resolution", self.resolution)
+     
+        if TEST:
+            return
+        
+        if self.checkMotor():
+            self.connectMotor()
+            self.client.write_register(0x7D, 0x20, unit=self.unit)
+            self.client.write_register(0x0381, gearA, unit=self.unit)
+            self.client.write_register(0x0383, gearB, unit=self.unit)
+            self.closeMotor()
+            alarm = self.chkAlrm()
+            if alarm:
+                self.showAlrm()
+                # print("!!! setGearing: Unable to reset electronic gearing")
+        else:
+            print("!!! setGearing: Unable to check motor status.")
+        
+        return
 
     def setMotor(self, tab):
         """
@@ -1753,13 +1790,13 @@ class TabControl:
 
         :return: None
         """
-        global pos1, pos2, pos3, pos4
+        global tmp1, tmp2, tmp3, tmp4
         global tab1, tab2, tab3, tab4
 
-        tab1 = copy.deepcopy(pos1)
-        tab2 = copy.deepcopy(pos2)
-        tab3 = copy.deepcopy(pos3)
-        tab4 = copy.deepcopy(pos4)
+        tab1 = copy.deepcopy(tmp1)
+        tab2 = copy.deepcopy(tmp2)
+        tab3 = copy.deepcopy(tmp3)
+        tab4 = copy.deepcopy(tmp4)
 
     def setLabel(self, t, position, x=215, y=100):
         """
@@ -1850,6 +1887,21 @@ class MakeTab:
     def _init_(self, unit):
         self.unit = unit
 
+    def getIntegerRatio(self, resolution):
+        """
+         # find smallest ratio of integers
+        """
+        if DBG:
+            print("--- Res: ", resolution, resolution/360)
+        stp = 1
+        deg = 1
+        for n in range(1, 360):
+            if (resolution * n) % 360 == 0:
+                stp = resolution * n / 360  
+                deg = n
+                #print("STUF", stp, deg)
+                break
+        return str(int(stp)), str(deg)
 
     def tablet1(self):
         """
@@ -1946,6 +1998,8 @@ class MakeTab:
         """
         global Resolution, Reference
 
+        steps, degree = self.getIntegerRatio(Resolution[3])
+
         nb.add(page[3], text="Grating 1", sticky='NESW')
 
         jogN = len(jog3); jogR = jogN * 20; jogS = 110 - jogR / 4
@@ -1954,7 +2008,7 @@ class MakeTab:
         tk.Label(page[3], font='Ariel 13', text="Current location").place(x=30, y=100, width=150, height=25)
         tk.Label(page[3], font='Ariel 13', text="Enter new location").place(x=30, y=150, width=150, height=25)
         tk.Label(page[3], font='Ariel 13', text="Jog").place(x=350, y=jogS, width=150, height=25)
-        tk.Label(page[3], font=10, text="2500 steps per 9" + u"\u00b0").place(x=30, y=200, width=150, height=25)
+        tk.Label(page[3], font=10, text=steps + " steps per " + degree + u"\u00b0").place(x=30, y=200, width=150, height=25)
 
         row = 0
         for line in tab3:
@@ -1963,8 +2017,8 @@ class MakeTab:
                     name = line[3] + " " + line[4]
                 else:
                     name = line[3]
-                tk.Radiobutton(page[3], font='Ariel 13', text=name, command=partial(M3.setMotor, 3), padx=20,
-                               variable=grate1, value=row, anchor='w').place(x=20, y=50+20*row, width=150, height=25)
+                tk.Radiobutton(page[3], font='Ariel 13' , text=name, command=partial(M3.setMotor, 3), padx=20,
+                           variable=grate1, value=row, anchor='w').place(x=20, y=50+20*row, width=150, height=25)
                 row = row + 1
             if line[1] == 'res':
                 Resolution[self.unit] = int(line[2])
@@ -1998,6 +2052,8 @@ class MakeTab:
         """
         global Resolution, Reference
 
+        steps, degree = self.getIntegerRatio(Resolution[4])
+
         nb.add(page[4], text="Grating 2", sticky='NESW')
 
         jogN = len(jog4); jogR = jogN * 20; jogS = 110 - jogR / 4
@@ -2006,7 +2062,7 @@ class MakeTab:
         tk.Label(page[4], font='Ariel 13', text="Current location").place(x=30, y=100, width=150, height=25)
         tk.Label(page[4], font='Ariel 13', text="Enter new location").place(x=30, y=150, width=150, height=25)
         tk.Label(page[4], font='Ariel 13', text="Jog").place(x=350, y=jogS, width=150, height=25)
-        tk.Label(page[4], font=10, text="2500 steps per 9" + u"\u00b0").place(x=-10, y=200, width=250, height=25)
+        tk.Label(page[4], font=10, text=steps + " steps per " + degree + u"\u00b0").place(x=30, y=200, width=150, height=25)
 
         row = 0
         for line in tab4:
@@ -2101,15 +2157,19 @@ F = LocalIO()
 F.readConfig()
 
 # do full initialization of the object. no global vars.
-M1 = MotorControl(1, port485, 1000, 0, 1000, 3000, 0, 8000)
-M2 = MotorControl(2, port485, 100, 0, 1000, 0, 0, 1000)
-M3 = MotorControl(3, port485, 10000, 0, 100000, 1000, 0, 12500)
-M4 = MotorControl(4, port485, 10000, 0, 100000, 1000, 0, 150000)
+M1 = MotorControl(1, port485, 1000,  0,  3000, 0, 8000)
+M2 = MotorControl(2, port485, 100,   0,     0, 0, 1000)
+M3 = MotorControl(3, port485, 10000, 0,  1000, 0, 12500)
+M4 = MotorControl(4, port485, 10000, 0,  1000, 0, 150000)
 
 if not TEST and not (M1.available and M2.available and M3.available and M4.available):
     warn()
     exit()
 
+M1.setGearing(1, 1, 1)
+M2.setGearing(1, 1, 1)
+M3.setGearing(1, 20, 100)
+M4.setGearing(1, 18, 100)
 
 """
 Main loop, begin.
