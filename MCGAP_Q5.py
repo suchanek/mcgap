@@ -126,16 +126,6 @@ def beep(repeat):
 #beep(10)
 #sys.exit()
 
-def exit():
-    """
-    Provides a single exit point.
-
-    Will test for changes and ask if changes should be saved.
-
-    return:
-    """
-    sys.exit(10)
-    return None
 
 def menu():
     """
@@ -154,14 +144,14 @@ def menu():
     filemenu.add_command(label="Exit", font='Ariel 13', command=main.quit)
     menubar.add_cascade(label="File", menu=filemenu)
 
-def message(unit, mflag, msg):
+def message(unit, _mflag, msg):
     global page
 
-    if mflag == 1:
+    if _mflag == 1:
         if DBG2:
             print(unit, "MESSAGE:", msg, ">", page[unit], "<")
         tk.Label(page[unit], font='Ariel 13', foreground="#000000", text=msg).place(x=100, y=10, width=350, height=25)
-        mflag = 0
+
     else:
         if DBG2:
             print(unit, "MESSAGE:", msg, ">", page[unit], "<")
@@ -207,7 +197,7 @@ def run():
             message(M1.unit, 1, msg)
         else:
             I.setEntry(1, p1)
-            slidePos = T.getRadioButn(1, tab1, page[1])
+            slidePos = T.getRadioButn(1, tab1)
             slide.set(slidePos)
     else:
         page[1] = ttk.Frame(nb)
@@ -225,7 +215,7 @@ def run():
             message(M2.unit, 1, msg)
         else:
             I.setEntry(2, p2)
-            cmparPos = T.getRadioButn(2, tab2, page[2])
+            cmparPos = T.getRadioButn(2, tab2)
             source.set(cmparPos)
     else:
         page[2] = ttk.Frame(nb)
@@ -243,7 +233,7 @@ def run():
             message(M3.unit, 1, msg)
         else:
             I.setEntry(3, p3)
-            grat1Pos = T.getRadioButn(3, tab3, page[3])
+            grat1Pos = T.getRadioButn(3, tab3)
             grate1.set(grat1Pos)
     else:
         page[3] = ttk.Frame(nb)
@@ -261,7 +251,7 @@ def run():
             message(M4.unit, 1, msg)
         else:
             I.setEntry(4, p4)
-            grat2Pos = T.getRadioButn(4, tab4, page[4])
+            grat2Pos = T.getRadioButn(4, tab4)
             grate2.set(grat2Pos)
     else:
         page[4] = ttk.Frame(nb)
@@ -286,7 +276,7 @@ class MotorControl:
 	This class contains motor attributes and methods
 	"""
 
-    def __init__(self, unit, port, speed, position, zero, lower, upper):
+    def __init__(self, unit, port, speed, position, zero, lower, upper, resolution):
         """
         :rtype: object
         """
@@ -294,7 +284,8 @@ class MotorControl:
         self.port = port
         self.speed = speed
         self.position = position # current step position
-        self.resolution = 1000
+        self.resolution = resolution
+        self.reference = 0
         self.zero = zero
         self.lower = lower
         self.upper = upper
@@ -414,7 +405,7 @@ class MotorControl:
         """
 		Connect to motor unit
 
-		:rtype: object
+		:rtype: Boolean
 		:return: True if success, False otherwise
 		"""
         res = 0
@@ -429,8 +420,6 @@ class MotorControl:
 
         if isinstance(self.client, ConnException):
             print(f"!!! connectMotor: Connection error for unit {self.unit}")
-            # reset the object's state
-            #self.client = 0
             self.connected = False
             return False
 
@@ -445,7 +434,6 @@ class MotorControl:
             return True
         else:
             self.connected = False
-            #self.client = 0
             print(f"!!! connectMotor: Can't connect to unit {self.unit}")
             return False
 
@@ -551,16 +539,16 @@ class MotorControl:
             log.debug(rp)
 
         if unit == 1:
-            slidePos = T.getRadioButn(1, tab1, page[1])
+            slidePos = T.getRadioButn(1, tab1)
             slide.set(slidePos)
         if unit == 2:
-            cmparPos = T.getRadioButn(2, tab2, page[2])
+            cmparPos = T.getRadioButn(2, tab2)
             source.set(cmparPos)
         if unit == 3:
-            grat1Pos = T.getRadioButn(3, tab3, page[3])
+            grat1Pos = T.getRadioButn(3, tab3)
             grate1.set(grat1Pos)
         if unit == 4:
-            grat2Pos = T.getRadioButn(4, tab4, page[4])
+            grat2Pos = T.getRadioButn(4, tab4)
             grate2.set(grat2Pos)
 
         Location[self.unit] = rp
@@ -595,8 +583,8 @@ class MotorControl:
         lower = self.lower
         upper = self.upper
 
-        if DBG:
-            print(f"--- POS: {pos}")
+        if DBG2:
+            print(f"--- outOfRange pos: {pos}")
         msg = str(pos + int(delta)) + " is Out of Range"
         flag = 0
         if pos + int(delta) < lower:
@@ -976,7 +964,7 @@ class MotorControl:
 
         return
 
-    def setMotor(self, tab):
+    def setMotor(self, _tab):
         """
 		Set the motor target position using the location for the selected RadioButton.
 
@@ -1053,32 +1041,32 @@ class InputControl:
         :param y: Entry box y position
         :return: True/False
         """
-        val = str(var.get())
+        _val = str(var.get())
 
-        if not val:
+        if not _val:
             return
 
         if DBG2:
-            print("CALLBACK", t, val)
+            print("CALLBACK", t, _val)
         try:
-            int(val)
+            int(_val)
         except:
             filter_char = lambda char: char.isdigit()
-            val = filter(filter_char, val)
-            if val.find("-") > 0:
-                val = val.replace("-", "")
+            _val = filter(filter_char, _val)
+            if _val.find("-") > 0:
+                _val = _val.replace("-", "")
             try:
-                int(val)
+                int(_val)
             except:
                 return False
 
-        if int(val) < 0:
-            val = "0"
-        if int(val) > Upper[t]:
-            val = str(Upper[t])
-        var.set(val)
+        if int(_val) < 0:
+            _val = "0"
+        if int(_val) > Upper[t]:
+            _val = str(Upper[t])
+        var.set(_val)
 
-        self.setAngle(val, t, x, y)
+        self.setAngle(_val, t, x, y)
 
         return True
 
@@ -1722,7 +1710,7 @@ class LocalIO:
 
 class TabControl:
     """
-
+    Control Tabs
     """
     def getLabel(self, t):
         """
@@ -1739,13 +1727,12 @@ class TabControl:
             s = 0
         return int(s)
 
-    def getRadioButn(self, unit, tablist, page):
+    def getRadioButn(self, unit, tablist):
         """
         Gets the RadioButton that matches the motor position.
 
         :param unit: motor index number
         :param tablist: contents array for the selected tablet
-        :param page: associated page number for the tablist
         :return: the RadioButton number found
         """
 
@@ -2017,8 +2004,8 @@ class MakeTab:
                     name = line[3] + " " + line[4]
                 else:
                     name = line[3]
-                tk.Radiobutton(page[3], font='Ariel 13' , text=name, command=partial(M3.setMotor, 3), padx=20,
-                           variable=grate1, value=row, anchor='w').place(x=20, y=50+20*row, width=150, height=25)
+                tk.Radiobutton(page[3], font='Ariel 13', text=name, command=partial(M3.setMotor, 3), padx=20,
+                               variable=grate1, value=row, anchor='w').place(x=20, y=50+20*row, width=150, height=25)
                 row = row + 1
             if line[1] == 'res':
                 Resolution[self.unit] = int(line[2])
@@ -2157,10 +2144,10 @@ F = LocalIO()
 F.readConfig()
 
 # do full initialization of the object. no global vars.
-M1 = MotorControl(1, port485, 1000, 0, 3000, 0, 8000)
-M2 = MotorControl(2, port485, 100, 0, 0, 0, 1000)
-M3 = MotorControl(3, port485, 10000, 0, 1000, 0, 450000)
-M4 = MotorControl(4, port485, 10000, 0, 1000, 0, 450000)
+M1 = MotorControl(1, port485, 1000, 0, 3000, 0, 8000, 1000)
+M2 = MotorControl(2, port485, 100, 0, 0, 0, 1000, 1000)
+M3 = MotorControl(3, port485, 10000, 0, 1000, 0, 450000, 100000)
+M4 = MotorControl(4, port485, 10000, 0, 1000, 0, 450000, 100000)
 
 if not TEST and not (M1.available and M2.available and M3.available and M4.available):
     warn()
@@ -2197,11 +2184,7 @@ main.config(menu=menubar)
 B = MakeTab()
 I = InputControl()
 T = TabControl()
-#print("START INITIALIZE")
 
-#_warn2 = '' ### COMMENT THIS LINE WHEN MOTORS ARE AVAILABLE
-#if _mode == 1:
-#    warn(unit, 1646)
 
 # Global variables
 strv = tk.StringVar()
@@ -2235,7 +2218,6 @@ Initialize the tabs
 svar = tk.StringVar()
 
 run()
-# myLabel.pack()
 main.mainloop()
 """
 End main loop
