@@ -51,7 +51,7 @@ _mode = 0
 limitSet = "Show"
 # i don't know if this is right but DISABLE is used and wasn't defined globally
 DISABLE = 0
-TEST = 1
+TEST = 0
 DBG = 1
 DBG2 = 0
 mflag = 0
@@ -62,7 +62,7 @@ Location = [0, 0, 0, 0, 0] # array of current coordinates
 Zero = [0, 3000, 0, 1000, 1000]
 Speed = [0, 100, 100, 10000, 10000]
 Resolution = [0, 1000, 1000, 100000, 100000]
-Upper = [0, 8000, 1000, 12500, 150000]
+Upper = [0, 8000, 1000, 450000, 450000]
 Offset = [0, 8000, 1000, 15000, 15000]
 
 # Initialize arrays
@@ -178,12 +178,12 @@ def warn():
     w.create_text(170, 15, text='WARNING:', font='Ariel 13', fill="#FF0000")
     w.create_text(170, 45, text=warn2, font='Ariel 13')
     w.create_text(170, 75, text=warn3, font='Ariel 13')
-    windowWidth = temp.winfo_reqwidth()
-    windowHeight = temp.winfo_reqheight()
-    positionRight = int(temp.winfo_screenwidth()/2 - windowWidth/1)
-    positionDown = int(temp.winfo_screenheight()/2 - windowHeight/1)
+    _windowWidth = temp.winfo_reqwidth()
+    _windowHeight = temp.winfo_reqheight()
+    _positionRight = int(temp.winfo_screenwidth()/2 - _windowWidth/1)
+    _positionDown = int(temp.winfo_screenheight()/2 - _windowHeight/1)
 
-    temp.geometry(f'+{positionRight}+{positionDown}')
+    temp.geometry(f'+{_positionRight}+{_positionDown}')
 
     b = tk.Button(w, text='QUIT', font='Ariel 15', width=35, command=exit, anchor=S)
     b.configure(width=10, activebackground="#BBBBBB")
@@ -191,11 +191,10 @@ def warn():
     b.place(x=120, y=110)
     temp.mainloop()
 
-    exit()
+    sys.exit()
 
 def run():
     global nb
-    mflag = 1
 
     if M1.available:
         page[1] = ttk.Frame(nb)
@@ -205,7 +204,7 @@ def run():
             # put up a warning that M1 can't be read...
             print("Can't read unit ", M1.unit)
             msg = f"Motor {M1.unit} is not available"
-            message(M1.unit, mflag, msg)
+            message(M1.unit, 1, msg)
         else:
             I.setEntry(1, p1)
             slidePos = T.getRadioButn(1, tab1, page[1])
@@ -213,7 +212,8 @@ def run():
     else:
         page[1] = ttk.Frame(nb)
         msg = f"Motor {M1.unit} is not available"
-        message(M1.unit, mflag, msg)
+        message(M1.unit, 1, msg)
+
     if M2.available:
         page[2] = ttk.Frame(nb)
         B.tablet2()
@@ -222,7 +222,7 @@ def run():
             # put up a warning that M1 can't be read...
             print("Can't read unit ", M2.unit)
             msg = f"Motor {M2.unit} is not available"
-            message(M2.unit, mflag, msg)
+            message(M2.unit, 1, msg)
         else:
             I.setEntry(2, p2)
             cmparPos = T.getRadioButn(2, tab2, page[2])
@@ -230,7 +230,8 @@ def run():
     else:
         page[2] = ttk.Frame(nb)
         msg = f"Motor {M2.unit} is not available"
-        message(M2.unit, mflag, msg)
+        message(M2.unit, 1, msg)
+
     if M3.available:
         page[3] = ttk.Frame(nb)
         B.tablet3()
@@ -239,7 +240,7 @@ def run():
             # put up a warning that M1 can't be read...
             print("Can't read unit ", M3.unit)
             msg = f"Motor {M3.unit} is not available"
-            message(M3.unit, mflag, msg)
+            message(M3.unit, 1, msg)
         else:
             I.setEntry(3, p3)
             grat1Pos = T.getRadioButn(3, tab3, page[3])
@@ -247,7 +248,7 @@ def run():
     else:
         page[3] = ttk.Frame(nb)
         msg = f"Motor {M3.unit} is not available"
-        message(M3.unit, mflag, msg)
+        message(M3.unit, 1, msg)
 
     if M4.available:
         page[4] = ttk.Frame(nb)
@@ -257,8 +258,7 @@ def run():
             # put up a warning that M4 can't be read...
             print("Can't read unit ", M4.unit)
             msg = f"Motor {M4.unit} is not available"
-            mflag = 1
-            message(M4.unit, mflag, msg)
+            message(M4.unit, 1, msg)
         else:
             I.setEntry(4, p4)
             grat2Pos = T.getRadioButn(4, tab4, page[4])
@@ -679,12 +679,12 @@ class MotorControl:
         w.create_text(170, 45, text=warn2, font='Ariel 13')
         w.create_text(170, 70, text="", font='Ariel 13')
         w.create_text(170, 95, text="", font='Ariel 13')
-        windowWidth = temp.winfo_reqwidth()
-        windowHeight = temp.winfo_reqheight()
-        positionRight = int(temp.winfo_screenwidth()/2 - windowWidth/1)
-        positionDown = int(temp.winfo_screenheight()/2 - windowHeight/2)
+        _windowWidth = temp.winfo_reqwidth()
+        _windowHeight = temp.winfo_reqheight()
+        _positionRight = int(temp.winfo_screenwidth()/2 - _windowWidth/1)
+        _positionDown = int(temp.winfo_screenheight()/2 - _windowHeight/2)
 
-        temp.geometry(f"+{positionRight}+{positionDown}")
+        temp.geometry(f"+{_positionRight}+{_positionDown}")
 
         b = tk.Button(w, text='Reset', font='Ariel 13', width=30, command=self.rstAlrm, anchor=S)
         b2 = tk.Button(w, text='Okay', font='Ariel 13', width=30, command=temp.destroy, anchor=S)
@@ -945,7 +945,6 @@ class MotorControl:
         Set the Electronic Gearing to adjust the resolution
 
         Resolution = 1000 X GearB / GearA * GearBox [= 100 for gratings]
-        
         """
         # verify requested gearing is integer and adjust gearB if needed
         condition = 1000.0 * float(gearB) / float(gearA) * float(gearBox)
@@ -955,25 +954,26 @@ class MotorControl:
         self.resolution = int(1000 * gearB / gearA * gearBox)
         Resolution[self.unit] = self.resolution
         if DBG:
-            print(f"--- setGearing: Adjusted gearB to {gearB}")
+            print(f"--- setGearing: Adjusted gearA to {gearA} gearB to {gearB}")
             print(f"Motor", self.unit, "Resolution", self.resolution)
-     
+
         if TEST:
             return
-        
-        if self.checkMotor():
+
+        if self.available:
             self.connectMotor()
             self.client.write_register(0x7D, 0x20, unit=self.unit)
             self.client.write_register(0x0381, gearA, unit=self.unit)
             self.client.write_register(0x0383, gearB, unit=self.unit)
-            self.closeMotor()
+
             alarm = self.chkAlrm()
             if alarm:
-                self.showAlrm()
+                self.showAlarm(alarm)
                 # print("!!! setGearing: Unable to reset electronic gearing")
+            self.closeMotor()
         else:
             print("!!! setGearing: Unable to check motor status.")
-        
+
         return
 
     def setMotor(self, tab):
@@ -2157,19 +2157,19 @@ F = LocalIO()
 F.readConfig()
 
 # do full initialization of the object. no global vars.
-M1 = MotorControl(1, port485, 1000,  0,  3000, 0, 8000)
-M2 = MotorControl(2, port485, 100,   0,     0, 0, 1000)
-M3 = MotorControl(3, port485, 10000, 0,  1000, 0, 12500)
-M4 = MotorControl(4, port485, 10000, 0,  1000, 0, 150000)
+M1 = MotorControl(1, port485, 1000, 0, 3000, 0, 8000)
+M2 = MotorControl(2, port485, 100, 0, 0, 0, 1000)
+M3 = MotorControl(3, port485, 10000, 0, 1000, 0, 450000)
+M4 = MotorControl(4, port485, 10000, 0, 1000, 0, 450000)
 
 if not TEST and not (M1.available and M2.available and M3.available and M4.available):
     warn()
     exit()
 
-M1.setGearing(1, 1, 1)
-M2.setGearing(1, 1, 1)
-M3.setGearing(1, 20, 100)
-M4.setGearing(1, 18, 100)
+#M1.setGearing(1, 1, 1)
+#M2.setGearing(1, 1, 1)
+#M3.setGearing(1, 1, 100)
+#M4.setGearing(1, 9, 100)
 
 """
 Main loop, begin.
