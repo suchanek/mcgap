@@ -1570,10 +1570,11 @@ class LocalIO:
         hdr3 = "\t 3 \t Grating_1 \t"
         hdr4 = "\t 4 \t Grating_2 \t"
         hdr5 = "\toffset \tzero \tspeed \n"
-        str1 = I.convertL2S(o[1]) + "\t" + I.convertL2S(z[1]) + "\t" + I.convertL2S(s[1]) + "\n"
-        str2 = I.convertL2S(o[2]) + "\t" + I.convertL2S(z[2]) + "\t" + I.convertL2S(s[2]) + "\n"
-        str3 = I.convertL2S(o[3]) + "\t" + I.convertL2S(z[3]) + "\t" + I.convertL2S(s[3]) + "\n"
-        str4 = I.convertL2S(o[4]) + "\t" + I.convertL2S(z[4]) + "\t" + I.convertL2S(s[4]) + "\n"
+ 
+        str1 = str(o[1].get()) + "\t" + str(z[1].get()) + "\t" + str(s[1].get()) + "\n"
+        str2 = str(o[2].get()) + "\t" + str(z[2].get()) + "\t" + str(s[2].get()) + "\n"
+        str3 = str(o[3].get()) + "\t" + str(z[3].get()) + "\t" + str(s[3].get()) + "\n"
+        str4 = str(o[4].get()) + "\t" + str(z[4].get()) + "\t" + str(s[4].get()) + "\n"
 
         # build file
         records = []
@@ -1596,7 +1597,7 @@ class LocalIO:
         fileHandle.close()
 
         if DBG:
-            print("wrote", filename)
+            print(f"--- saveCfg: wrote {filename}")
 
         # reset current values
         for i in range(5):
