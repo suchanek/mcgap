@@ -1845,7 +1845,6 @@ class TabControl:
 
     def updateTabLocations(self):
         """
-
         :param unit:
         :return:
         """
@@ -1909,7 +1908,9 @@ class MakeTab:
 
         nb.add(page[1], text="Slide", sticky='NESW')
 
-        jogN = len(jog1); jogR = jogN * 20; jogS = 110 - jogR / 4
+        jogN = len(jog1)
+        jogR = jogN * 20
+        jogS = 110 - jogR / 4
 
         tk.Label(page[1], font='Ariel 13', text="Current location").place(x=190, y=70, width=150, height=25)
         tk.Label(page[1], font='Ariel 13', text="Enter new location").place(x=190, y=140, width=150, height=25)
@@ -1953,7 +1954,9 @@ class MakeTab:
 
         nb.add(page[2], text="Comparisons", sticky='NESW')
 
-        jogN = len(jog2); jogR = jogN * 20; jogS = 110 - jogR / 4
+        jogN = len(jog2)
+        jogR = jogN * 20
+        jogS = 110 - jogR / 4
 
         tk.Label(page[2], font='Ariel 13', text="Current location").place(x=190, y=70, width=150, height=25)
         tk.Label(page[2], font='Ariel 13', text="Enter new location").place(x=190, y=140, width=150, height=25)
@@ -2055,7 +2058,9 @@ class MakeTab:
 
         nb.add(page[4], text="Grating 2", sticky='NESW')
 
-        jogN = len(jog4); jogR = jogN * 20; jogS = 110 - jogR / 4
+        jogN = len(jog4)
+        jogR = jogN * 20
+        jogS = 110 - jogR / 4
 
         tk.Label(page[4], font='Ariel 13', text="Grating 2 angle is").place(x=30, y=50, width=150, height=25)
         tk.Label(page[4], font='Ariel 13', text="Current location").place(x=30, y=100, width=150, height=25)
@@ -2129,7 +2134,6 @@ Main loop, initialize.
 """
 # global variables
 # com ports
-# this can change based on the USB enumeration. it's com6 on babybear now
 
 ports = list(serial.tools.list_ports.comports())
 
