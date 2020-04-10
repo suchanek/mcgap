@@ -1381,7 +1381,7 @@ class LocalIO:
         # item1, item2, item3, item4 = 0
         global tab1, tab2, tab3, tab4
         global tmp1, tmp2, tmp3, tmp4
-        global pos1, pos2, pos3, pos4
+        #global pos1, pos2, pos3, pos4
         global jog1, jog2, jog3, jog4
 
         # read whole file
@@ -1455,19 +1455,18 @@ class LocalIO:
                         Reference[3] = int(line[2])
                     if line[0] == str(4):
                         Reference[4] = int(line[2])
-
-        if DBG:
-            print("USER ", tab2)
+            
         filename = path.basename(filename)
         main.title('GAP Motor Control: using ' + str(filename))
         main.title('USER settings: ' + str(filename))
-        if DBG:
-            print("readUser")
-            print(filename)
+        if DBG2:
+            print(f"--- readUser: USER {tab2}")
+            print(f"--- readUser: {filename}")
+
         #
         # since this calls run() isn't this recursive? should it be -egs-
         updateTabs()
-
+        return
 
     def saveUser(self):
         """
@@ -1507,11 +1506,13 @@ class LocalIO:
 
         if filename == '':
             return
-
         # write file
         fileHandle = open(filename, "w")
         fileHandle.writelines(records)
         fileHandle.close()
+        if DBG2:
+            print(f"--- saveUser saved: {filename}")
+        return
 
     def chkPassword(self, root, pw):
         """
@@ -1615,7 +1616,7 @@ class LocalIO:
         conf = tk.Tk()
         conf.wm_title('Settings')
         page[0] = Canvas(conf, width=850, height=280)
-        #page[0].grid()
+        page[0].grid()
         page[0].rowconfigure(0, {'minsize' : 20})
         page[0].rowconfigure(3, {'minsize' : 20})
         page[0].rowconfigure(8, {'minsize' : 20})
@@ -2003,6 +2004,10 @@ class MakeTab:
 
         steps, degree = self.getIntegerRatio(M3.resolution)
 
+        stepPerDegree = int(steps) / int(degree)
+        stepPerMin = (stepPerDegree / 60) * 100
+        msg = str.format("{} steps per minute", stepPerMin)
+    
         nb.add(page[3], text="Grating 1", sticky='NESW')
 
         jogN = len(jog3); jogR = jogN * 20; jogS = 110 - jogR / 4
@@ -2012,6 +2017,7 @@ class MakeTab:
         tk.Label(page[3], font='Ariel 13', text="Enter new location").place(x=30, y=150, width=150, height=25)
         tk.Label(page[3], font='Ariel 13', text="Jog").place(x=350, y=jogS, width=150, height=25)
         tk.Label(page[3], font=10, text=steps + " steps per " + degree + u"\u00b0").place(x=30, y=200, width=150, height=25)
+        #tk.Label(page[3], font=10, text=msg).place(x=30, y=200, width=150, height=25)
 
         row = 0
         for line in tab3:
@@ -2168,11 +2174,6 @@ M4 = MotorControl(4, port485, 10000, 0, 1000, 0, 450000, 100000)
 if not TEST and not (M1.available and M2.available and M3.available and M4.available):
     warn()
     exit()
-
-#M1.setGearing(1, 1, 1)
-#M2.setGearing(1, 1, 1)
-#M3.setGearing(1, 1, 100)
-#M4.setGearing(1, 9, 100)
 
 """
 Main loop, begin.
