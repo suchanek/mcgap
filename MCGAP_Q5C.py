@@ -11,7 +11,7 @@ import pymodbus.exceptions
 from pymodbus.exceptions import ModbusIOException as ModbusException
 from pymodbus.exceptions import ConnectionException as ConnException
 
-import simpleaudio as sa
+#import simpleaudio as sa
 
 from functools import partial
 import serial
@@ -946,8 +946,9 @@ class MotorControl:
         
         """
 
-        gearA = gearB = 1
-        self.resolution = int(1000 * gearBox)
+        gearA = 1
+        gearB = 9
+        self.resolution = int(1000 * gearA *gearB * gearBox)
         Resolution[self.unit] = self.resolution
         
         if DBG:
@@ -1903,17 +1904,14 @@ class MakeTab:
     def getIntegerRatio(self, resolution):
         """
          # find smallest ratio of integers
-         ### MUST DIVIDE BY GEAR BOX RATIO = 100
-         ### SINCE IT IS NOT DIVISIBLE
         """
         if DBG:
             print("--- Res: ", resolution, resolution/360)
-        box = 100
         stp = 1
         deg = 1
         for n in range(1, 360):
-            if (resolution / box * n) % 360 == 0:
-                stp = resolution / box * n / 360  
+            if (resolution * n) % 360 == 0:
+                stp = resolution * n / 360  
                 deg = n
                 #print("STUF", stp, deg)
                 break

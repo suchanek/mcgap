@@ -644,14 +644,13 @@ class MotorControl:
         if isinstance(self.client, ModbusException):
             return False
 
-        # you can only write registers if the motor is available.
-
-        if not TEST:
-            self.client.write_register(0x7D, 0x80, unit=self.unit)
-            self.client.write_register(0x7D, 0x0, unit=self.unit)
-        else:
-            TEST = 0
+        if TEST:
             return True
+
+        # you can only write registers if the motor is available.
+        self.client.write_register(0x7D, 0x80, unit=self.unit)
+        self.client.write_register(0x7D, 0x0, unit=self.unit)
+        return True
 
     def showAlarm(self, error):
         warn2 = f"Motor {self.unit} has an alarm: {error}"
@@ -683,6 +682,7 @@ class MotorControl:
         beep(1)
         temp.mainloop()
         temp.destroy
+        return
 
     def readDelay(self, target):
         """
@@ -845,7 +845,7 @@ class MotorControl:
         pos = self.readMotor()
         if pos == READERROR:
             # we couldn't read the motor!
-            msg = "Motor " + str(self.unit) +" is not available"
+            msg = f"Motor {self.unit} is not available"
             print(f"!!! sendMotor: could not read unit {self.unit}")
             message(self.unit, 1, msg)
             return READERROR
@@ -871,7 +871,7 @@ class MotorControl:
         # get the desired target position
         setPosition = int(self.target)
         if DBG2:
-            print("--- sendmMotor: SEND WRITE TRY ", self.unit, " TO ", setPosition)
+            print(f"--- sendmMotor: Send unit {self.unit} TO {setPosition}")
 
         if self.connectMotor():
             # needs error checking against alarm
@@ -936,12 +936,13 @@ class MotorControl:
         
         """
 
-        gearA = gearB = 1
-        self.resolution = int(1000 * gearBox)
+        gearA = 1
+        gearB = 9
+        self.resolution = int(1000 * gearA * gearB * gearBox)
         Resolution[self.unit] = self.resolution
         if DBG:
             print(f"--- getGearing: Adjusted gearA to {gearA} gearB to {gearB}")
-            print(f"Motor", self.unit, "Resolution", self.resolution)
+            print(f"--- getGearing: Motor {self.unit} Resolution {self.resolution}")
 
         if TEST:
             return
@@ -957,7 +958,6 @@ class MotorControl:
             alarm = self.chkAlrm()
             if alarm:
                 self.showAlarm(alarm)
-                # print("!!! setGearing: Unable to reset electronic gearing")
             self.closeMotor()
         else:
             print("!!! getGearing: Unable to check motor status.")
@@ -1227,7 +1227,7 @@ class InputControl:
 
 class LocalIO:
     """
-
+    Does LocalIO
     """
 
     def _init_(self, filename):
@@ -1896,12 +1896,11 @@ class MakeTab:
         """
         if DBG:
             print("--- Res: ", resolution, resolution/360)
-        box = 100
         stp = 1
         deg = 1
         for n in range(1, 360):
-            if (resolution / box * n) % 360 == 0:
-                stp = resolution / box * n / 360  
+            if (resolution * n) % 360 == 0:
+                stp = resolution * n / 360  
                 deg = n
                 #print("STUF", stp, deg)
                 break
