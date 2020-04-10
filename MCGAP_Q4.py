@@ -54,7 +54,7 @@ DISABLE = 0
 TEST = 0
 DBG = 1
 DBG2 = 0
-mflag = 0
+
 
 Reference = [0, 0, 0, 0, 0]
 Location = [0, 0, 0, 0, 0] # array of current coordinates
@@ -123,19 +123,8 @@ def beep(repeat):
         play_sound('ping.wav')
         repeat -= 1
 
-#beep(10)
-#sys.exit()
-
-def exit():
-    """
-    Provides a single exit point.
-
-    Will test for changes and ask if changes should be saved.
-
-    return:
-    """
-    sys.exit(10)
-    return None
+#beep(1)
+#exit()
 
 def menu():
     """
@@ -161,7 +150,7 @@ def message(unit, mflag, msg):
         if DBG2:
             print(unit, "MESSAGE:", msg, ">", page[unit], "<")
         tk.Label(page[unit], font='Ariel 13', foreground="#000000", text=msg).place(x=100, y=10, width=350, height=25)
-        mflag = 0
+
     else:
         if DBG2:
             print(unit, "MESSAGE:", msg, ">", page[unit], "<")
@@ -169,7 +158,7 @@ def message(unit, mflag, msg):
 
 
 def warn():
-    global windowWidth, windowHeight, positionRight, positionDown
+
     warn2 = "No motor is available."
     warn3 = "Connect and turn on motors."
     temp = tk.Tk()
@@ -179,12 +168,12 @@ def warn():
     w.create_text(170, 15, text='WARNING:', font='Ariel 13', fill="#FF0000")
     w.create_text(170, 45, text=warn2, font='Ariel 13')
     w.create_text(170, 75, text=warn3, font='Ariel 13')
-    windowWidth = temp.winfo_reqwidth()
-    windowHeight = temp.winfo_reqheight()
-    positionRight = int(temp.winfo_screenwidth()/2 - windowWidth/1)
-    positionDown = int(temp.winfo_screenheight()/2 - windowHeight/1)
+    _windowWidth = temp.winfo_reqwidth()
+    _windowHeight = temp.winfo_reqheight()
+    _positionRight = int(temp.winfo_screenwidth()/2 - _windowWidth/1)
+    _positionDown = int(temp.winfo_screenheight()/2 - _windowHeight/1)
 
-    temp.geometry(f'+{positionRight}+{positionDown}')
+    temp.geometry(f'+{_positionRight}+{_positionDown}')
 
     b = tk.Button(w, text='QUIT', font='Ariel 15', width=35, command=exit, anchor=S)
     b.configure(width=10, activebackground="#BBBBBB")
@@ -196,7 +185,7 @@ def warn():
 
 def run():
     global nb
-    mflag = 1
+    #mflag = 1
 
     if M1.available:
         page[1] = ttk.Frame(nb)
@@ -206,7 +195,7 @@ def run():
             # put up a warning that M1 can't be read...
             print("Can't read unit ", M1.unit)
             msg = f"Motor {M1.unit} is not available"
-            message(M1.unit, mflag, msg)
+            message(M1.unit, 1, msg)
         else:
             I.setEntry(1, p1)
             slidePos = T.getRadioButn(1, tab1, page[1])
@@ -214,7 +203,7 @@ def run():
     else:
         page[1] = ttk.Frame(nb)
         msg = f"Motor {M1.unit} is not available"
-        message(M1.unit, mflag, msg)
+        message(M1.unit, 1, msg)
     if M2.available:
         page[2] = ttk.Frame(nb)
         B.tablet2()
@@ -223,7 +212,7 @@ def run():
             # put up a warning that M1 can't be read...
             print("Can't read unit ", M2.unit)
             msg = f"Motor {M2.unit} is not available"
-            message(M2.unit, mflag, msg)
+            message(M2.unit, 1, msg)
         else:
             I.setEntry(2, p2)
             cmparPos = T.getRadioButn(2, tab2, page[2])
@@ -231,7 +220,7 @@ def run():
     else:
         page[2] = ttk.Frame(nb)
         msg = f"Motor {M2.unit} is not available"
-        message(M2.unit, mflag, msg)
+        message(M2.unit, 1, msg)
     if M3.available:
         page[3] = ttk.Frame(nb)
         B.tablet3()
@@ -240,7 +229,7 @@ def run():
             # put up a warning that M1 can't be read...
             print("Can't read unit ", M3.unit)
             msg = f"Motor {M3.unit} is not available"
-            message(M3.unit, mflag, msg)
+            message(M3.unit, 1, msg)
         else:
             I.setEntry(3, p3)
             grat1Pos = T.getRadioButn(3, tab3, page[3])
@@ -248,7 +237,7 @@ def run():
     else:
         page[3] = ttk.Frame(nb)
         msg = f"Motor {M3.unit} is not available"
-        message(M3.unit, mflag, msg)
+        message(M3.unit, 1, msg)
 
     if M4.available:
         page[4] = ttk.Frame(nb)
@@ -258,8 +247,7 @@ def run():
             # put up a warning that M4 can't be read...
             print("Can't read unit ", M4.unit)
             msg = f"Motor {M4.unit} is not available"
-            mflag = 1
-            message(M4.unit, mflag, msg)
+            message(M4.unit, 1, msg)
         else:
             I.setEntry(4, p4)
             grat2Pos = T.getRadioButn(4, tab4, page[4])
@@ -678,12 +666,12 @@ class MotorControl:
         w.create_text(170, 45, text=warn2, font='Ariel 13')
         w.create_text(170, 70, text="", font='Ariel 13')
         w.create_text(170, 95, text="", font='Ariel 13')
-        windowWidth = temp.winfo_reqwidth()
-        windowHeight = temp.winfo_reqheight()
-        positionRight = int(temp.winfo_screenwidth()/2 - windowWidth/1)
-        positionDown = int(temp.winfo_screenheight()/2 - windowHeight/2)
+        _windowWidth = temp.winfo_reqwidth()
+        _windowHeight = temp.winfo_reqheight()
+        _positionRight = int(temp.winfo_screenwidth()/2 - _windowWidth/1)
+        _positionDown = int(temp.winfo_screenheight()/2 - _windowHeight/2)
 
-        temp.geometry(f"+{positionRight}+{positionDown}")
+        temp.geometry(f"+{_positionRight}+{_positionDown}")
 
         b = tk.Button(w, text='Reset', font='Ariel 13', width=30, command=self.rstAlrm, anchor=S)
         b2 = tk.Button(w, text='Okay', font='Ariel 13', width=30, command=temp.destroy, anchor=S)
@@ -939,7 +927,7 @@ class MotorControl:
         # all good, return the final position
         return rp
 
-    def setMotor(self, tab):
+    def setMotor(self, _tab):
         """
 		Set the motor target position using the location for the selected RadioButton.
 
@@ -1052,10 +1040,10 @@ class InputControl:
 
         # convert first level list to string
         #s = [item for sublist in l for item in sublist]
-        s = [str(i) for i in lstr]
+        _s = [str(i) for i in lstr]
 
         # traverse each list
-        for line in s:
+        for line in _s:
             # traverse the string
             for x in line:
                 if x in "['":
@@ -2103,8 +2091,8 @@ F.readConfig()
 # do full initialization of the object. no global vars.
 M1 = MotorControl(1, port485, 1000, 0, 1000, 3000, 0, 8000)
 M2 = MotorControl(2, port485, 100, 0, 1000, 0, 0, 1000)
-M3 = MotorControl(3, port485, 10000, 0, 100000, 1000, 0, 12500)
-M4 = MotorControl(4, port485, 10000, 0, 100000, 1000, 0, 150000)
+M3 = MotorControl(3, port485, 10000, 0, 100000, 1000, 0, 450000)
+M4 = MotorControl(4, port485, 10000, 0, 100000, 1000, 0, 450000)
 
 if not TEST and not (M1.available and M2.available and M3.available and M4.available):
     warn()
@@ -2122,7 +2110,7 @@ menubar = tk.Menu(main)
 # Gets the requested values of the height and widht.
 windowWidth = main.winfo_reqwidth()
 windowHeight = main.winfo_reqheight()
-#print("Width",windowWidth,"Height",windowHeight)
+print(f"Width {windowWidth} Height {windowHeight}")
 
 # Gets both half the screen width/height and window width/height
 positionRight = int(main.winfo_screenwidth()/2 - windowWidth/1)
@@ -2137,11 +2125,6 @@ main.config(menu=menubar)
 B = MakeTab()
 I = InputControl()
 T = TabControl()
-#print("START INITIALIZE")
-
-#_warn2 = '' ### COMMENT THIS LINE WHEN MOTORS ARE AVAILABLE
-#if _mode == 1:
-#    warn(unit, 1646)
 
 # Global variables
 strv = tk.StringVar()

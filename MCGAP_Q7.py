@@ -1,4 +1,7 @@
 #
+# Motor Control Software for the MIRA gap.
+# Author: Gary Love, with help from Eric Suchanek
+#
 
 import tkinter as tk
 from tkinter import *
@@ -8,6 +11,7 @@ from tkinter import ttk
 import serial.tools.list_ports
 
 import pymodbus.exceptions
+from pymodbus.client.sync import ModbusSerialClient as ModbusClient
 from pymodbus.exceptions import ModbusIOException as ModbusException
 from pymodbus.exceptions import ConnectionException as ConnException
 
@@ -38,8 +42,6 @@ ExceptionCodes = {1: 'Illegal Function', 2: 'Illegal Data Address',
 logging.basicConfig(format=FORMAT)
 log = logging.getLogger()
 
-from pymodbus.client.sync import ModbusSerialClient as ModbusClient
-
 # Define Global Variables
 READERROR = -999 # returned when can't read a motor
 ATLIMIT = -888
@@ -49,7 +51,7 @@ filemenu = 0
 limitSet = "Show"
 # i don't know if this is right but DISABLE is used and wasn't defined globally
 DISABLE = 0
-TEST = 1
+TEST = 0
 DBG = 1
 DBG2 = 0
 
@@ -143,7 +145,7 @@ def warn():
     w.create_text(170, 15, text='WARNING:', font='Ariel 13', fill="#FF0000")
     w.create_text(170, 45, text=warn2, font='Ariel 13')
     w.create_text(170, 75, text=warn3, font='Ariel 13')
-   
+
     _positionRight = int(temp.winfo_screenwidth()/2 - temp.winfo_reqwidth()/1)
     _positionDown = int(temp.winfo_screenheight()/2 - temp.winfo_reqheight()/1)
 
@@ -585,7 +587,6 @@ class MotorControl:
         res = False
 
         msg = f"{self.position} + {int(delta)} is Out of Range"
-        flag = 0
 
         if self.position + int(delta) < self.lower or self.position + int(delta) > self.upper:
             if DBG:
@@ -660,7 +661,7 @@ class MotorControl:
         w.create_text(170, 45, text=warn2, font='Ariel 13')
         w.create_text(170, 70, text="", font='Ariel 13')
         w.create_text(170, 95, text="", font='Ariel 13')
-       
+
         _positionRight = int(temp.winfo_screenwidth()/2 - temp.winfo_reqwidth()/1)
         _positionDown = int(temp.winfo_screenheight()/2 - temp.winfo_reqheight()/2)
 
@@ -921,7 +922,6 @@ class MotorControl:
         Get the Electronic Gearing to adjust the resolution
 
         Resolution = 1000 X GearB / GearA * GearBox [= 100 for gratings]
-        
         """
 
         gearA = 1
@@ -949,7 +949,6 @@ class MotorControl:
             self.closeMotor()
         else:
             print("!!! getGearing: Unable to check motor status.")
-        
         # verify requested gearing is integer and adjust gearB if needed
         condition = 1000.0 * float(gearB) / float(gearA) * float(gearBox)
         if condition - int(condition) != 0:
@@ -963,7 +962,6 @@ class MotorControl:
 
         self.resolution = int(1000 * gearB / gearA * gearBox)
         Resolution[self.unit] = self.resolution
-        
         return
 
     def setMotor(self, _tab):
@@ -1078,10 +1076,10 @@ class InputControl:
 
         # convert first level list to string
         #s = [item for sublist in l for item in sublist]
-        s = [str(i) for i in lstr]
+        _s = [str(i) for i in lstr]
 
         # traverse each list
-        for line in s:
+        for line in _s:
             # traverse the string
             for x in line:
                 if x in "['":
@@ -1097,10 +1095,10 @@ class InputControl:
             # return string
         return new
 
-    def convertS2Dms(self, val, res):
+    def convertS2Dms(self, _val, res):
         # convert a step value to degrees, minutes, seconds
 
-        dg = float(int(val)) * 360.0 / float(res)
+        dg = float(int(_val)) * 360.0 / float(res)
         di = int(dg)
         mn = (dg - float(di)) * 60.0
         mi = int(mn)
@@ -1110,23 +1108,23 @@ class InputControl:
             st = str(abs(mi)) + "'" + str(abs(si)) + '"'
         else:
             st = str(di) + u"\u00b0" + str(abs(mi)) + "'" + str(abs(si)) + '"'
-        if val < 0:
+        if _val < 0:
             st = "-" + st
         return st
 
-    def convertS2Dcd(self, val, res):
+    def convertS2Dcd(self, _val, res):
         # convert a step value to decimal degrees
 
-        dg = float(int(val)) * 360.0 / float(res)
+        dg = float(int(_val)) * 360.0 / float(res)
         st = str(dg)
-        if val < 0:
+        if _val < 0:
             st = "-" + st
         return st
 
 
-    def convertS2(self, val, res):
+    def convertS2(self, _val, res):
         # convert a step value to degrees, decimal minutes
-        dg = float(int(val)) * 360.0 / float(res)
+        dg = float(int(_val)) * 360.0 / float(res)
         di = int(dg)
         mn = (dg - float(di)) * 60.0
         mn = int(100*mn)/100.0
@@ -1141,16 +1139,17 @@ class InputControl:
             else:
                 st = str(di) + u"\u00b0" + str(abs(mn)) + "'"
 
-        if val < 0:
+        if _val < 0:
             st = "-" + st
         return st
 
     def initEntry(self, unit):
+        global strv
         rp = Location[unit]
         strv = tk.StringVar()
         strv.set(rp)
 
-    def setAngle(self, val, t, x, y):
+    def setAngle(self, _val, t, x, y):
         """
         Display the motor angle
         ANGLE DISPLAY WINDOW. tk.Label place sets x, y location
@@ -1174,10 +1173,10 @@ class InputControl:
         try:
             if var == int(var):
                 return True
-        except Exception:
+        except:
             return False
 
-    def setEntry(self, t, val):
+    def setEntry(self, t, _val):
         """
         Get Entry values.
 
@@ -1185,11 +1184,11 @@ class InputControl:
         :param val: enter value
         :return:
         """
-        global e
+        global e, strv
 
-        val = str(int(val))
+        val = str(int(_val))
         if DBG2:
-            print("SETENTRY target location", t, "VAL", val)
+            print(f">>> setEntry: target location {t} VAL {val}")
 
         if t < 3:
             strv = tk.StringVar()
@@ -1207,6 +1206,7 @@ class InputControl:
                             validatecommand=I.callback(str1, t, 200, 100), justify='right')
         # POSITION ENTRY WINDOW, "place" sets x, y location
             e[t].place(x=210, y=150, width=60, height=20)
+        return
 
 class LocalIO:
     """
@@ -1364,15 +1364,18 @@ class LocalIO:
          .
         :return: selected filename
         """
-        filename = askopenfilename(initialdir="./", title="Select file",
-                                   filetypes=(("config files", "*.usr"), ("all files", "*.*")))
-
+       
         # global pos1, pos2, pos3, pos4
         # item1, item2, item3, item4 = 0
         global tab1, tab2, tab3, tab4
         global tmp1, tmp2, tmp3, tmp4
         #global pos1, pos2, pos3, pos4
         global jog1, jog2, jog3, jog4
+
+        filename = askopenfilename(initialdir="./", title="Select file",
+                                   filetypes=(("config files", "*.usr"), ("all files", "*.*")))
+        if not filename:
+            return
 
         # read whole file
         fileHandle = open(filename, "r")
@@ -1445,7 +1448,7 @@ class LocalIO:
                         Reference[3] = int(line[2])
                     if line[0] == str(4):
                         Reference[4] = int(line[2])
-            
+
         filename = path.basename(filename)
         main.title('GAP Motor Control: using ' + str(filename))
         main.title('USER settings: ' + str(filename))
@@ -1556,7 +1559,7 @@ class LocalIO:
         hdr3 = "\t 3 \t Grating_1 \t"
         hdr4 = "\t 4 \t Grating_2 \t"
         hdr5 = "\t\toffset \tzero \tspeed \tlower \tupper \n"
- 
+
         str1 = "\t" + str(o[1].get()) + "\t\t" + str(z[1].get()) + "\t\t" + str(s[1].get()) + "\t" + str(l[1].get()) + "\t\t" + str(u[1].get()) + "\n"
         str2 = "\t" + str(o[2].get()) + "\t\t" + str(z[2].get()) + "\t\t" + str(s[2].get()) + "\t" + str(l[2].get()) + "\t\t" + str(u[2].get()) + "\n"
         str3 = "\t" + str(o[3].get()) + "\t\t" + str(z[3].get()) + "\t\t" + str(s[3].get()) + "\t" + str(l[3].get()) + "\t\t" + str(u[3].get()) + "\n"
@@ -1726,10 +1729,10 @@ class TabControl:
         global e
 
         if e[t] != 0:
-            s = e[t].get()
+            ss = e[t].get()
         else:
-            s = 0
-        return int(s)
+            ss = 0
+        return int(ss)
 
     def getRadioButn(self, unit, tablist):
         """
@@ -1890,9 +1893,8 @@ class MakeTab:
         deg = 1
         for n in range(1, 360):
             if (resolution * n) % 360 == 0:
-                stp = resolution * n / 360  
+                stp = resolution * n / 360
                 deg = n
-                #print("STUF", stp, deg)
                 break
         return str(int(stp)), str(deg)
 
@@ -1996,7 +1998,6 @@ class MakeTab:
         stepPerDegree = int(steps) / int(degree)
         stepPerMin = (stepPerDegree / 60) * 100
         msg = str.format("{} steps per minute", stepPerMin)
-    
         nb.add(page[3], text="Grating 1", sticky='NESW')
 
         jogN = len(jog3); jogR = jogN * 20; jogS = 110 - jogR / 4
