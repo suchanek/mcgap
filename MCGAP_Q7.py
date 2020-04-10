@@ -62,6 +62,7 @@ Location = [0, 0, 0, 0, 0] # array of current coordinates
 Zero = [0, 3000, 0, 1000, 1000]
 Speed = [0, 100, 100, 10000, 10000]
 Resolution = [0, 1000, 1000, 100000, 100000]
+Lower = [0, 0, 0, 0, 0]
 Upper = [0, 8000, 1000, 450000, 450000]
 Offset = [0, 8000, 1000, 15000, 15000]
 
@@ -1355,18 +1356,26 @@ class LocalIO:
                 Offset[1] = int(line[2])
                 Zero[1] = int(line[3])
                 Speed[1] = int(line[4])
+                Lower[1] = int(line[5])
+                Upper[1] = int(line[6])
             if line[0] == '2':
                 Offset[2] = int(line[2])
                 Zero[2] = int(line[3])
                 Speed[2] = int(line[4])
+                Lower[2] = int(line[5])
+                Upper[2] = int(line[6])
             if line[0] == '3':
                 Offset[3] = int(line[2])
                 Zero[3] = int(line[3])
                 Speed[3] = int(line[4])
+                Lower[3] = int(line[5])
+                Upper[3] = int(line[6])
             if line[0] == '4':
                 Offset[4] = int(line[2])
                 Zero[4] = int(line[3])
                 Speed[4] = int(line[4])
+                Lower[4] = int(line[5])
+                Upper[4] = int(line[6])
 
     def readUser(self):
         """
@@ -1569,12 +1578,12 @@ class LocalIO:
         hdr2 = "\t 2 \t Comparison "
         hdr3 = "\t 3 \t Grating_1 \t"
         hdr4 = "\t 4 \t Grating_2 \t"
-        hdr5 = "\toffset \tzero \tspeed \n"
+        hdr5 = "\t\toffset \tzero \tspeed \tlower \tupper \n"
  
-        str1 = str(o[1].get()) + "\t" + str(z[1].get()) + "\t" + str(s[1].get()) + "\n"
-        str2 = str(o[2].get()) + "\t" + str(z[2].get()) + "\t" + str(s[2].get()) + "\n"
-        str3 = str(o[3].get()) + "\t" + str(z[3].get()) + "\t" + str(s[3].get()) + "\n"
-        str4 = str(o[4].get()) + "\t" + str(z[4].get()) + "\t" + str(s[4].get()) + "\n"
+        str1 = "\t" + str(o[1].get()) + "\t\t" + str(z[1].get()) + "\t\t" + str(s[1].get()) + "\t" + str(l[1].get()) + "\t\t" + str(u[1].get()) + "\n"
+        str2 = "\t" + str(o[2].get()) + "\t\t" + str(z[2].get()) + "\t\t" + str(s[2].get()) + "\t" + str(l[2].get()) + "\t\t" + str(u[2].get()) + "\n"
+        str3 = "\t" + str(o[3].get()) + "\t\t" + str(z[3].get()) + "\t\t" + str(s[3].get()) + "\t" + str(l[3].get()) + "\t\t" + str(u[3].get()) + "\n"
+        str4 = "\t" + str(o[4].get()) + "\t\t" + str(z[4].get()) + "\t\t" + str(s[4].get()) + "\t" + str(l[4].get()) + "\t\t" + str(u[4].get()) + "\n"
 
         # build file
         records = []
@@ -1606,6 +1615,8 @@ class LocalIO:
             Offset[i] = int(o[i].get())
             Zero[i] = int(z[i].get())
             Speed[i] = int(s[i].get())
+            Lower[i] = int(l[i].get())
+            Upper[i] = int(u[i].get())
 
         win.destroy()
 
@@ -1686,7 +1697,7 @@ class LocalIO:
         s[2].grid(row=5, column=7)
         s[3].grid(row=6, column=7)
         s[4].grid(row=7, column=7)
-
+        print("SPD 4",Speed[4])
         tk.Label(page[0], text="LOWER").grid(row=1, column=9)
         tk.Label(page[0], text="Limit").grid(row=2, column=9)
         l[1] = tk.Entry(page[0], width=8, justify=RIGHT, borderwidth=2)
