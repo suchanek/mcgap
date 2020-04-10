@@ -51,10 +51,10 @@ _mode = 0
 limitSet = "Show"
 # i don't know if this is right but DISABLE is used and wasn't defined globally
 DISABLE = 0
-TEST = 0
+TEST = 1
 DBG = 1
 DBG2 = 0
-mflag = 0
+#mflag = 0
 
 Reference = [0, 0, 0, 0, 0]
 Location = [0, 0, 0, 0, 0] # array of current coordinates
@@ -928,21 +928,19 @@ class MotorControl:
         # all good, return the final position
         return rp
 
-    def setGearing(self, gearA, gearB, gearBox):
+    def getGearing(self, gearBox):
         """
-        Set the Electronic Gearing to adjust the resolution
+        Get the Electronic Gearing to adjust the resolution
 
         Resolution = 1000 X GearB / GearA * GearBox [= 100 for gratings]
+        
         """
-        # verify requested gearing is integer and adjust gearB if needed
-        condition = 1000.0 * float(gearB) / float(gearA) * float(gearBox)
-        if condition - int(condition) != 0:
-            gearB = int(condition / 1000.0 * float(gearA) / float(gearBox))
 
-        self.resolution = int(1000 * gearB / gearA * gearBox)
+        gearA = gearB = 1
+        self.resolution = int(1000 * gearBox)
         Resolution[self.unit] = self.resolution
         if DBG:
-            print(f"--- setGearing: Adjusted gearA to {gearA} gearB to {gearB}")
+            print(f"--- getGearing: Adjusted gearA to {gearA} gearB to {gearB}")
             print(f"Motor", self.unit, "Resolution", self.resolution)
 
         if TEST:
@@ -950,18 +948,34 @@ class MotorControl:
 
         if self.available:
             self.connectMotor()
-            self.client.write_register(0x7D, 0x20, unit=self.unit)
-            self.client.write_register(0x0381, gearA, unit=self.unit)
-            self.client.write_register(0x0383, gearB, unit=self.unit)
+            read = self.client.read_input_registers(0x0381, 1, unit=self.unit)
+            gearA = read.registers[0]
+            read = self.client.read_input_registers(0x0383, 1, unit=self.unit)
+            gearB = read.registers[0]
 
+            self.speed = self.speed * gearB / gearA
             alarm = self.chkAlrm()
             if alarm:
                 self.showAlarm(alarm)
                 # print("!!! setGearing: Unable to reset electronic gearing")
             self.closeMotor()
         else:
-            print("!!! setGearing: Unable to check motor status.")
+            print("!!! getGearing: Unable to check motor status.")
+        
+        # verify requested gearing is integer and adjust gearB if needed
+        condition = 1000.0 * float(gearB) / float(gearA) * float(gearBox)
+        if condition - int(condition) != 0:
+            gearB = int(condition / 1000.0 * float(gearA) / float(gearBox))
 
+        # check P/R
+        PR = 1000.0 * float(gearB) / float(gearA)
+        if PR < 100 or PR > 10000:
+            print("Electronic gearing is not valid")
+            exit()
+
+        self.resolution = int(1000 * gearB / gearA * gearBox)
+        Resolution[self.unit] = self.resolution
+        
         return
 
     def setMotor(self, _tab):
@@ -1877,14 +1891,17 @@ class MakeTab:
     def getIntegerRatio(self, resolution):
         """
          # find smallest ratio of integers
+         ### MUST DIVIDE BY GEAR BOX RATIO = 100
+         ### SINCE IT IS NOT DIVISIBLE
         """
         if DBG:
             print("--- Res: ", resolution, resolution/360)
+        box = 100
         stp = 1
         deg = 1
         for n in range(1, 360):
-            if (resolution * n) % 360 == 0:
-                stp = resolution * n / 360  
+            if (resolution / box * n) % 360 == 0:
+                stp = resolution / box * n / 360  
                 deg = n
                 #print("STUF", stp, deg)
                 break
@@ -1985,7 +2002,7 @@ class MakeTab:
         """
         global Resolution, Reference
 
-        steps, degree = self.getIntegerRatio(Resolution[3])
+        steps, degree = self.getIntegerRatio(M3.resolution)
 
         nb.add(page[3], text="Grating 1", sticky='NESW')
 
@@ -2039,7 +2056,7 @@ class MakeTab:
         """
         global Resolution, Reference
 
-        steps, degree = self.getIntegerRatio(Resolution[4])
+        steps, degree = self.getIntegerRatio(M4.resolution)
 
         nb.add(page[4], text="Grating 2", sticky='NESW')
 
