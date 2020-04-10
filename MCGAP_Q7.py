@@ -26,7 +26,6 @@ import logging
 import copy
 from time import sleep
 
-
 FORMAT = ('%(asctime)-15s %(threadName)-15s '
           '%(levelname)-8s %(module)-15s:%(lineno)-8s %(message)s')
 
@@ -46,15 +45,13 @@ READERROR = -999 # returned when can't read a motor
 ATLIMIT = -888
 
 filemenu = 0
-_warn1 = ''
-_mode = 0
+
 limitSet = "Show"
 # i don't know if this is right but DISABLE is used and wasn't defined globally
 DISABLE = 0
 TEST = 1
 DBG = 1
 DBG2 = 0
-#mflag = 0
 
 Reference = [0, 0, 0, 0, 0]
 Location = [0, 0, 0, 0, 0] # array of current coordinates
@@ -86,9 +83,6 @@ tmp1 = tmp2 = tmp3 = tmp4 = []
 pos1 = pos2 = pos3 = pos4 = []
 page = ["page[0]", "page[1]", "page[2]", "page[3]", "page[4]"]
 
-#_ref = []
-#_res = []
-
 PATH = pathlib.Path(__file__).parent.joinpath("").resolve()
 CONFIG_FILENAME = "GAPMC.ozs"
 CONFIG_PATH = PATH.joinpath(CONFIG_FILENAME)
@@ -108,10 +102,6 @@ def beep(repeat):
     while repeat:
         play_sound('ping.wav')
         repeat -= 1
-
-#beep(10)
-#sys.exit()
-
 
 def menu():
     """
@@ -143,7 +133,6 @@ def message(unit, _mflag, msg):
             print(unit, "MESSAGE:", msg, ">", page[unit], "<")
         tk.Label(page[unit], font='Ariel 13', foreground="#F0F0F0", text=msg).place(x=100, y=10, width=350, height=25)
 
-
 def warn():
     warn2 = "No motor is available."
     warn3 = "Connect and turn on motors."
@@ -154,10 +143,9 @@ def warn():
     w.create_text(170, 15, text='WARNING:', font='Ariel 13', fill="#FF0000")
     w.create_text(170, 45, text=warn2, font='Ariel 13')
     w.create_text(170, 75, text=warn3, font='Ariel 13')
-    _windowWidth = temp.winfo_reqwidth()
-    _windowHeight = temp.winfo_reqheight()
-    _positionRight = int(temp.winfo_screenwidth()/2 - _windowWidth/1)
-    _positionDown = int(temp.winfo_screenheight()/2 - _windowHeight/1)
+   
+    _positionRight = int(temp.winfo_screenwidth()/2 - temp.winfo_reqwidth()/1)
+    _positionDown = int(temp.winfo_screenheight()/2 - temp.winfo_reqheight()/1)
 
     temp.geometry(f'+{_positionRight}+{_positionDown}')
 
@@ -166,8 +154,8 @@ def warn():
     w.create_window(120, 110, anchor=NW, window=b)
     b.place(x=120, y=110)
     temp.mainloop()
-
     sys.exit()
+    return
 
 def run():
     global nb
@@ -241,7 +229,8 @@ def run():
             grate2.set(grat2Pos)
     else:
         page[4] = ttk.Frame(nb)
-        B.warntab(4)
+        msg = f"Motor {M4.unit} is not available"
+        message(M4.unit, 1, msg)
 
 def updateTabs():
     """
@@ -552,7 +541,6 @@ class MotorControl:
             return READERROR
 
         # all ok, return position
-
         return rp
 
     def OoutOfRange(self, delta):
@@ -672,10 +660,9 @@ class MotorControl:
         w.create_text(170, 45, text=warn2, font='Ariel 13')
         w.create_text(170, 70, text="", font='Ariel 13')
         w.create_text(170, 95, text="", font='Ariel 13')
-        _windowWidth = temp.winfo_reqwidth()
-        _windowHeight = temp.winfo_reqheight()
-        _positionRight = int(temp.winfo_screenwidth()/2 - _windowWidth/1)
-        _positionDown = int(temp.winfo_screenheight()/2 - _windowHeight/2)
+       
+        _positionRight = int(temp.winfo_screenwidth()/2 - temp.winfo_reqwidth()/1)
+        _positionDown = int(temp.winfo_screenheight()/2 - temp.winfo_reqheight()/2)
 
         temp.geometry(f"+{_positionRight}+{_positionDown}")
 
@@ -718,7 +705,6 @@ class MotorControl:
 
         delay = (abs(rp - target)) * 1.2 / self.speed
         ldelay = delay
-        #msg = "Wait " + str(int(10.0 * delay) / 10.0) + " sec"
         msg = f"Wait {int(10.0 * delay) / 10.0} sec"
 
         tk.Label(page[self.unit], font='Ariel 13', foreground="#FF0000", text=msg).place(x=90, y=10, width=350, height=25)
@@ -786,14 +772,11 @@ class MotorControl:
             return self.position
 
         if self.connectMotor():
-            # Gary - do we need this codeblock since we never actually use the result - upprpos
-
             read = self.client.read_holding_registers(0x00C7, 1, unit=self.unit)
             if read.isError():
                 log.debug(read)
                 print(f"!!! - readMotor unit {self.unit}, ioException on read.")
-                # self.connected = False
-                # self.closeMotor()
+                self.closeMotor()
                 return READERROR
             else:
                 position = read.registers[0]
@@ -870,8 +853,7 @@ class MotorControl:
                 print(">>> sendMotor: Send Reverse unit: ", self.unit, self.position)
 
         if self.outOfRange(delta):
-            if DBG:
-                print("!!! sendMotor: SEND IS OUT OF RANGE. RETURN")
+            print("!!! sendMotor: SEND IS OUT OF RANGE. RETURN")
             return READERROR
 
         # get the desired target position
@@ -1036,7 +1018,6 @@ class MotorControl:
             beep(2)
         return
 
-
 class InputControl:
     """
     This class contains motor attributes and methods
@@ -1183,7 +1164,6 @@ class InputControl:
             e1 = tk.Label(page[t], font='Ariel 12', bg="#FFFFFF", text=st, justify='right')
             e1.place(x=x, y=y-50, width=80, height=20)
 
-
     def is_number(self, var):
         """
         Test whether variable is a number.
@@ -1196,7 +1176,6 @@ class InputControl:
                 return True
         except Exception:
             return False
-
 
     def setEntry(self, t, val):
         """
@@ -1228,8 +1207,6 @@ class InputControl:
                             validatecommand=I.callback(str1, t, 200, 100), justify='right')
         # POSITION ENTRY WINDOW, "place" sets x, y location
             e[t].place(x=210, y=150, width=60, height=20)
-
-
 
 class LocalIO:
     """
@@ -1340,7 +1317,6 @@ class LocalIO:
         main.title('DEFAULT settings: ' + str(filename))
         main.config()
         return filename
-
 
     def readConfig(self):
         """
@@ -2194,7 +2170,7 @@ main.wm_title('GAP Motor Control')
 main.geometry('550x300')
 menubar = tk.Menu(main)
 
-# Gets the requested values of the height and widht.
+# Gets the requested values of the height and width.
 windowWidth = main.winfo_reqwidth()
 windowHeight = main.winfo_reqheight()
 #print("Width",windowWidth,"Height",windowHeight)
