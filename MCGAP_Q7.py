@@ -591,7 +591,7 @@ class MotorControl:
 		Check if the desired delta position is within normal range
 
 		:param: delta correction for new motor position
-		:return: True if OK, False if out of range, or READERROR otherwise
+		:return: True if OK, False if out of range
 		"""
         global tk
         res = False
