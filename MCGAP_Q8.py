@@ -37,7 +37,7 @@ FORMAT = ('%(asctime)-15s %(threadName)-15s '
 ExceptionCodes = {1: 'Illegal Function', 2: 'Illegal Data Address',
                   3: 'Illegal Data Value', 4: 'Slave Device Failure', 5: 'Acknowledge',
                   6: 'Slave Device Busy', 7: 'Negative Acknowlege', 8: 'Memory Parity Error',
-                  10: 'Gateway Path Unavailable', 11: 'Gatewaty Target Device Failed to respond'}
+                  10: 'Gateway Path Unavailable', 11: 'Gateway Target Device Failed to respond'}
 
 logging.basicConfig(format=FORMAT)
 log = logging.getLogger()
@@ -51,7 +51,7 @@ filemenu = 0
 limitSet = "Show"
 # i don't know if this is right but DISABLE is used and wasn't defined globally
 DISABLE = 0
-TEST = 1
+TEST = 0
 DBG = 1
 DBG2 = 0
 
@@ -862,6 +862,18 @@ class MotorControl:
 
         # get the desired target position
         setPosition = int(self.target)
+
+        # segment large moves greater than 65356 steps
+        # max range 125000 occurs for units 3 and 4 for
+        # 45 degree move when 1000000 steps / 360 deg rev
+        # so no more than one mid point is ever needed
+        # however a jog is needed to avoid the oversize target
+        do_mid = 0
+        if abs(delta) > 65000:
+            midPosition = int((setPosition + pos) / 2)
+            jogPosition = setPosition - midPosition
+            do_mid = 1
+
         if DBG2:
             print(f">>> sendmMotor: Send unit {self.unit} TO {setPosition}")
 
@@ -875,8 +887,12 @@ class MotorControl:
             self.client.write_register(0x1801, 1, unit=self.unit)
             #self.client.write_register(0x0383, 1, unit=self.unit)
             self.client.write_register(0x1805, self.speed, unit=self.unit)
-            self.client.write_register(0x1803, setPosition, unit=self.unit)
-            self.client.write_register(0x7D, 0x8, unit=self.unit)
+            if do_mid:
+                self.jogMotor(midPosition - pos)
+                self.jogMotor(setPosition - midPosition)
+            else:
+                self.client.write_register(0x1803, setPosition, unit=self.unit)
+                self.client.write_register(0x7D, 0x8, unit=self.unit)
             rp = self.readDelay(setPosition)
 
             if rp == READERROR:
