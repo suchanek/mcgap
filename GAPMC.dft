@@ -1,24 +1,24 @@
 # GAPMC configuration
 # tab 	key 	value 	label
 #1	tab	100	Slide
-1	mech	500	Mechelle
+1	mech	1000	Mechelle
 1	wide	3000	Wide Field
 1	slit	4000	Slit Jaw
 1	eye	6000	Eyepiece
 1	ccd	7000	CCD Camera
 1	comp	8000	Comparisons
 1	jog	-1	-1
-1	jog	-2	-2
 1	jog	-5	-5
-1	jog	-10	-10
 1	jog	-20	-20
 1	jog	-50	-50
+1	jog	-100	-100
+1	jog	-200	-200
 1	jog	1	+1
-1	jog	2	+2
 1	jog	5	+5
-1	jog	10	+10
 1	jog	20	+20
 1	jog	50	+50
+1	jog	100	+100
+1	jog	200	+200
 #2	tab	2	Comparisons
 2	neon	 200	Neon Lamp
 2	flat	 500	Flat Lamp
@@ -26,58 +26,46 @@
 2	hgvp	 900	Mercury Vapor
 2	thrm	1000	Thorium
 2	jog	-1	-1
+2	jog	-2	-2
 2	jog	-5	-5
+2	jog	-10	-10
 2	jog	-20	-20
 2	jog	-50	-50
-2	jog	-100	-100
-2	jog	-200	-200
 2	jog	1	+1
+2	jog	2	+2
 2	jog	5	+5
+2	jog	10	+10
 2	jog	20	+20
 2	jog	50	+50
-2	jog	100	+100
-2	jog	200	+200
 #3	tab	3	Grating 1
 3	tab	0	0
 3	jog	-1	-1
 3	jog	-2	-2
-3	jog	-4	-4
-3	jog	-7	-7
-3	jog	-17	-17
-3	jog	-51	-51
-#3	jog	-125	-125
-#3	jog	-250    -250
-#3	jog	-625    -625
-#3	jog	-1250	-1250
-#3	jog	-2500	-2500
+3	jog	-5	-5
+3	jog	-10	-10
+3	jog	-25	-25
+3	jog	-50	-50
+3	jog	-100	-100
 3	jog	1	+1
 3	jog	2	+2
-3	jog	4	+4
-3	jog	7	+7
-3	jog	17	+17
-3	jog	51	+51
-#3	jog	125	+125
-#3	jog	250	+250
-#3	jog	625 	+625
-#3	jog	1250	+1250
-#3	jog	2500	+2500
+3	jog	5	+5
+3	jog	10	+10
+3	jog	25	+25
+3	jog	50	+50
+3	jog	100	+100
 #4	tab	4	Grating 2
 4	tab	0	0
 4	jog	-1	-1
 4	jog	-2	-2
-4	jog	-3	-3
-4	jog	-4	-4
 4	jog	-5	-5
-4	jog	-10	-10
-#4	jog	-50	-50
-#4	jog	-100	-100
-#4	jog	-200	-200
+4	jog	-10	-10 0.004 deg
+4	jog	-25	-25
+4	jog	-50	-50
+4	jog	-100	-100
 4	jog	1	+1
 4	jog	2	+2
-4	jog	3	+3
-4	jog	4	+4
 4	jog	5	+5
 4	jog	10	+10
-#4	jog	50	+50
-#4	jog	100	+100
-#4	jog	200	+200
+4	jog	25	+25
+4	jog	50	+50
+4	jog	100	+100 0.04 deg
