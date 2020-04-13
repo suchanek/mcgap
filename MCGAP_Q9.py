@@ -55,9 +55,9 @@ TEST = 1
 DBG = 1
 DBG2 = 0
 
-#Reference = [0, 0, 0, 0, 0]
 Location = [0, 0, 0, 0, 0] # array of current coordinates
 
+#Reference = [0, 0, 0, 0, 0]
 #Zero = [0, 3000, 0, 1000, 1000]
 #Speed = [0, 100, 100, 10000, 10000]
 #Resolution = [0, 1000, 1000, 100000, 100000]
@@ -276,6 +276,7 @@ class MotorControl:
         self.target = 0 # targeted step location
         self.connected = False
         self.available = self.isAvailable()
+        
 
     def isAvailable(self):
         """
@@ -779,7 +780,7 @@ class MotorControl:
         self.sendMotor()
 
         if DBG2:
-            print("GOT LOCATION", location)
+            print("--- getTarget: GOT LOCATION", location)
         return
 
     # major rework, now includes better exception handling
@@ -839,7 +840,7 @@ class MotorControl:
         # so no more than one mid point is ever needed
         # however a jog is needed to avoid the oversize target
         do_mid = 0
-        if abs(delta) > 65000:
+        if abs(delta) > 65535:
             midPosition = int((setPosition + pos) / 2)
             jogPosition = setPosition - midPosition
             do_mid = 1
@@ -917,12 +918,8 @@ class MotorControl:
         gearB = 9
         self.resolution = int(1000 * gearA * gearB * gearBox)
 
-        if DBG:
-            print(f">>> getGearing: Adjusted gearA to {gearA} gearB to {gearB}")
-            print(f">>> getGearing: Motor {self.unit} Resolution {self.resolution}")
-
         if TEST:
-            return
+            return True
 
         if self.available:
             self.connectMotor()
@@ -938,6 +935,8 @@ class MotorControl:
             self.closeMotor()
         else:
             print("!!! getGearing: Unable to check motor status.")
+            return False
+
         # verify requested gearing is integer and adjust gearB if needed
         condition = 1000.0 * float(gearB) / float(gearA) * float(gearBox)
         if condition - int(condition) != 0:
@@ -946,11 +945,15 @@ class MotorControl:
         # check P/R
         PR = 1000.0 * float(gearB) / float(gearA)
         if PR < 100 or PR > 10000:
-            print("Electronic gearing is not valid")
-            exit()
+            print("getGearing: Electronic gearing is not valid")
+            return False
+
+        if DBG:
+            print(f">>> getGearing: Adjusted gearA to {gearA} gearB to {gearB}")
+            print(f">>> getGearing: Motor {self.unit} Resolution {self.resolution}")
 
         self.resolution = int(1000 * gearB / gearA * gearBox)
-        return
+        return True
 
     def setMotor(self, _tab):
         """
@@ -1212,34 +1215,6 @@ class InputControl:
         # POSITION ENTRY WINDOW, "place" sets x, y location
             e[t].place(x=210, y=150, width=60, height=20)
         return
-
-ports = list(serial.tools.list_ports.comports())
-
-if DBG2:
-    print(f">>> Ports: {ports}")
-    i = 0
-    for p, q, r in ports:
-        i += 1
-        if r.find("FTDIBUS") >= 0:
-            print(f">>> RS485 P {p}, Q {q}, R {r}")
-            port485 = p
-        else:
-            print(f">>> Found Motor {i} port {p}")
-
-# this may change, but is the root port for all motors
-port485 = "COM6"
-
-"""
-Motor check.
-"""
-
-
-# do full initialization of the object.
-M1 = MotorControl(1, port485, 1000, 0, 3000, 0, 8000, 1000, 0, 8000)
-M2 = MotorControl(2, port485, 100, 0, 0, 0, 1000, 1000, 0, 1000)
-M3 = MotorControl(3, port485, 10000, 0, 1000, 0, 125000, 100000, 0, 15000)
-M4 = MotorControl(4, port485, 10000, 0, 1000, 0, 125000, 100000, 0, 15000)
-
 
 class LocalIO:
     """
@@ -1623,6 +1598,7 @@ class LocalIO:
 
         # reset current values
         for motor in [M1, M2, M3, M4]:
+            i = motor.unit
             motor.offset = int(o[i].get())
             motor.zero = int(z[i].get())
             motor.speed = int(s[i].get())
@@ -1681,10 +1657,10 @@ class LocalIO:
         o[2] = tk.Entry(page[0], width=8, justify=RIGHT, borderwidth=2)
         o[3] = tk.Entry(page[0], width=8, justify=RIGHT, borderwidth=2)
         o[4] = tk.Entry(page[0], width=8, justify=RIGHT, borderwidth=2)
-        o[1].insert(0, Offset[1])
-        o[2].insert(0, Offset[2])
-        o[3].insert(0, Offset[3])
-        o[4].insert(0, Offset[4])
+        o[1].insert(0, M1.offset)
+        o[2].insert(0, M2.offset)
+        o[3].insert(0, M3.offset)
+        o[4].insert(0, M4.offset)
         o[1].grid(row=4, column=5)
         o[2].grid(row=5, column=5)
         o[3].grid(row=6, column=5)
@@ -2025,7 +2001,7 @@ class MakeTab:
         :param unit: motor index number.
         :return:
         """
-        global Resolution, Reference
+        #global Resolution, Reference
 
         steps, degree = self.getIntegerRatio(M3.resolution)
 
@@ -2080,8 +2056,7 @@ class MakeTab:
         :param unit: motor index number.
         :return:
         """
-        global Resolution, Reference
-
+        
         steps, degree = self.getIntegerRatio(M4.resolution)
 
         nb.add(page[4], text="Grating 2", sticky='NESW')
@@ -2162,13 +2137,37 @@ Main loop, initialize.
 """
 # global variables
 # com ports
+ports = list(serial.tools.list_ports.comports())
 
-F = LocalIO()
-F.readConfig()
+if DBG2:
+    print(f">>> Ports: {ports}")
+    i = 0
+    for p, q, r in ports:
+        i += 1
+        if r.find("FTDIBUS") >= 0:
+            print(f">>> RS485 P {p}, Q {q}, R {r}")
+            port485 = p
+        else:
+            print(f">>> Found Motor {i} port {p}")
+
+"""
+Motor check.
+"""
+
+# do full initialization of the objects
+port485 = "COM6"
+
+M1 = MotorControl(1, port485, 1000, 0, 3000, 0, 8000, 1000, 0, 8000)
+M2 = MotorControl(2, port485, 100, 0, 0, 0, 1000, 1000, 0, 1000)
+M3 = MotorControl(3, port485, 10000, 0, 1000, 0, 125000, 100000, 0, 15000)
+M4 = MotorControl(4, port485, 10000, 0, 1000, 0, 125000, 100000, 0, 15000)
 
 if not TEST and not (M1.available and M2.available and M3.available and M4.available):
     warn()
     sys.exit()
+
+F = LocalIO()
+F.readConfig()
 
 """
 Main loop, begin.
@@ -2177,18 +2176,14 @@ main = tk.Tk()
 main.wm_title('GAP Motor Control')
 main.geometry('550x300')
 menubar = tk.Menu(main)
-
-# Gets the requested values of the height and width.
-windowWidth = main.winfo_reqwidth()
-windowHeight = main.winfo_reqheight()
-#print("Width",windowWidth,"Height",windowHeight)
+menu()
 
 # Gets both half the screen width/height and window width/height
-positionRight = int(main.winfo_screenwidth()/2 - windowWidth/1)
-positionDown = int(main.winfo_screenheight()/2 - windowHeight/1)
+_positionRight = int(main.winfo_screenwidth()/2 - main.winfo_reqwidth()/1)
+_positionDown = int(main.winfo_screenheight()/2 - main.winfo_reqheight()/1)
 
 # Positions the window in the center of the page.
-main.geometry("+{}+{}".format(positionRight, positionDown))
+main.geometry(f"+{_positionRight}+{_positionDown}")
 
 # display the menu
 main.config(menu=menubar)
@@ -2208,8 +2203,6 @@ slide = tk.IntVar()
 source = tk.IntVar()
 grate1 = tk.IntVar()
 grate2 = tk.IntVar()
-
-menu()
 
 rows = 0
 while rows < 50:
