@@ -540,6 +540,7 @@ class MotorControl:
 
         # don't need this since set in readdelay
         # self.position = rp
+
         if DBG:
             print(f">>> JogHERE {unit} jogPosition = {rp}")
         if jogPosition != rp:
@@ -1146,7 +1147,12 @@ class InputControl:
 
     def initEntry(self, unit):
         global strv
-        rp = Location[unit]
+        #import numpy as np
+
+        #motors = np.asarray([0, M1, M2, M3, M4])
+        motors = [0, M1, M2, M3, M4]
+        rp = motors[unit].position
+        #rp = Location[unit]
         strv = tk.StringVar()
         strv.set(rp)
         return
@@ -1911,7 +1917,6 @@ class MakeTab:
         :param unit: motor index number.
         :return:
         """
-        global Resolution
 
         nb.add(page[1], text="Slide", sticky='NESW')
 
@@ -1957,7 +1962,6 @@ class MakeTab:
         :param unit: motor index number.
         :return:
         """
-        global Resolution
 
         nb.add(page[2], text="Comparisons", sticky='NESW')
 
@@ -2165,6 +2169,11 @@ M4 = MotorControl(4, port485, 10000, 0, 1000, 0, 125000, 100000, 0, 15000)
 if not TEST and not (M1.available and M2.available and M3.available and M4.available):
     warn()
     sys.exit()
+
+M1.getGearing(1)
+M2.getGearing(1)
+M3.getGearing(100)
+M4.getGearing(100)
 
 F = LocalIO()
 F.readConfig()
