@@ -1,6 +1,6 @@
 # Motor configurations
 # Motor  label 		offset 	zero 	speed	lower	upper
-	 1 	 Slide 		0	0	200	0	8000
-	 2 	 Comparison 0	0	200	0	1000
+	 1 	 Slide 		0	0	500	0	8000
+	 2 	 Comparison 0	0	500	0	1000
 	 3 	 Grating_1 	0	0	5000 0  65535
 	 4 	 Grating_2 	0	0	5000 0  65535

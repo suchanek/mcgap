@@ -51,7 +51,7 @@ filemenu = 0
 limitSet = "Show"
 # i don't know if this is right but DISABLE is used and wasn't defined globally
 DISABLE = 0
-TEST = 1
+TEST = 0
 DBG = 1
 DBG2 = 0
 
@@ -925,19 +925,21 @@ class MotorControl:
 
         if self.available:
             self.connectMotor()
-            read = self.client.read_input_registers(0x0381, 1, unit=self.unit)
+            read = self.client.read_holding_registers(0x0381, 1, unit=self.unit)
             if read.isError():
                 print("!!! getGearing: got modbus exception: ", ExceptionCodes.get(read.exception_code))
             else:
                 gearA = read.registers[0]
             
-            read = self.client.read_input_registers(0x0383, 1, unit=self.unit)
+            read = self.client.read_holding_registers(0x0383, 1, unit=self.unit)
             if read.isError():
                 print("!!! getGearing: got modbus exception: ", ExceptionCodes.get(read.exception_code))
             else:
                 gearB = read.registers[0]
 
             self.speed = self.speed * gearB / gearA
+            if DBG2:
+                print(f">>> getGearing: Speed {self.speed}")
             self.closeMotor()
         else:
             print("!!! getGearing: Unable to check motor status.")
@@ -1377,6 +1379,7 @@ class LocalIO:
                 M4.speed = int(line[4])
                 M4.lower = int(line[5])
                 M4.upper = int(line[6])
+        return
 
     def readUser(self):
         """
@@ -2137,8 +2140,8 @@ Motor check.
 # do full initialization of the objects
 port485 = "COM6"
 
-M1 = MotorControl(1, port485, 1000, 0, 3000, 0, 8000, 1000, 0, 8000, 1)
-M2 = MotorControl(2, port485, 100, 0, 0, 0, 1000, 1000, 0, 1000, 1)
+M1 = MotorControl(1, port485, 5000, 0, 3000, 0, 8000, 1000, 0, 8000, 1)
+M2 = MotorControl(2, port485, 5000, 0, 0, 0, 1000, 1000, 0, 1000, 1)
 M3 = MotorControl(3, port485, 10000, 0, 1000, 0, 125000, 100000, 0, 15000, 100)
 M4 = MotorControl(4, port485, 10000, 0, 1000, 0, 125000, 100000, 0, 15000, 100)
 
