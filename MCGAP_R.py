@@ -688,7 +688,7 @@ class MotorControl:
         while rp != target:
             reps += 1
             if DBG:
-                print(f">>> readDelay: attempt {reps}")
+                print(f">>> readDelay: Unit {self.unit} attempt {reps}")
 
             delay = (abs(rp - target)) * 1.2 / self.speed
             if ldelay < delay:
@@ -730,7 +730,7 @@ class MotorControl:
 
         tk.Label(page[self.unit], font='Ariel 13', foreground="#F0F0F0", text=msg).place(x=90, y=10, width=350, height=25)
         if DBG:
-            print(">>> readDelay OUT", rp)
+            print(f">>> readDelay unit: {self.unit} out: {rp}")
         self.position = rp
         return rp
 
