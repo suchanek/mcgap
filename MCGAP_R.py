@@ -51,7 +51,7 @@ filemenu = 0
 limitSet = "Show"
 # i don't know if this is right but DISABLE is used and wasn't defined globally
 DISABLE = 0
-TEST = 1
+TEST = 0
 DBG = 1
 DBG2 = 0
 
@@ -720,6 +720,7 @@ class MotorControl:
                 return READERROR
 
             rp = read.registers[0]
+            print(f">>> readDelay: current pos is {rp}, target is {target}")
             main.config(cursor="")
 
             atlimit = self.checkLimits()
@@ -850,7 +851,7 @@ class MotorControl:
             jogPosition = delta - midPosition
             do_mid = 1
 
-        if DBG2:
+        if DBG:
             print(f">>> sendmMotor: Send unit {self.unit} TO {setPosition}")
 
         if do_mid:
