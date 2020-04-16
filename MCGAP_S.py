@@ -51,7 +51,7 @@ filemenu = 0
 limitSet = "Show"
 # i don't know if this is right but DISABLE is used and wasn't defined globally
 DISABLE = 0
-TEST = 0
+TEST = 1
 DBG = 1
 DBG2 = 0
 
@@ -473,7 +473,6 @@ class MotorControl:
                 return READERROR
 
             self.client.write_register(0x7D, 0x20, unit=self.unit)
-            #self.client.write_register(0x0383, 1, unit=self.unit)
             self.client.write_register(0x1805, self.speed, unit=self.unit)
 
             if int(delta) > 0:
@@ -492,8 +491,8 @@ class MotorControl:
             rp = self.readDelay(jogPosition)
 
             if rp == READERROR:
-                msg = "Motor " + str(unit) +" can't be read!"
-                print(f"!!! jogMotor: Can't read unit {self.unit}")
+                msg = f"Motor {unit} had a read error"
+                print(f"!!! jogMotor: Got an error reading unit {self.unit}")
                 message(unit, 1, msg)
                 self.closeMotor()
                 return READERROR
@@ -501,10 +500,10 @@ class MotorControl:
             if unit > 20:
                 self.client.write_register(0x7D, 0x8, unit=self.unit)
                 self.client.write_register(0x7D, 0x20, unit=self.unit)
+
                 self.client.write_register(0x7D, 0x0, unit=self.unit)
                 self.client.write_register(0x1805, self.speed, unit=self.unit)
                 self.client.write_register(0x02A1, int(delta), unit=self.unit)
-                #self.client.write_register(0x1803, jogPosition - 10, unit=self.unit)
                 self.client.write_register(0x7D, 0x8, unit=self.unit)
                 rp = self.readDelay(jogPosition)
 
@@ -523,7 +522,7 @@ class MotorControl:
         self.closeMotor()
 
         if DBG:
-            print(f">>> jogMotor: Jog unit {self.unit} to {rp}")
+            print(f">>> jogMotor: Success! Jogged unit {self.unit} to {rp}")
             log.debug(rp)
 
         if unit == 1:
@@ -750,23 +749,11 @@ class MotorControl:
             return self.position
 
         if self.connectMotor():
-            read = self.client.read_holding_registers(0x00C6, 1, unit=self.unit)
-            if read.isError():
-                log.debug(read)
-                print(f"!!! - readMotor unit {self.unit}, ioException on read.")
+            position = self.getPosition()
+            if position == READERROR:
+                print(f"!!! - readMotor unit {self.unit}, can't get motor position.")
                 self.closeMotor()
                 return READERROR
-            else:
-                hiPosition = read.registers[0]
-            read = self.client.read_holding_registers(0x00C7, 1, unit=self.unit)
-            if read.isError():
-                log.debug(read)
-                print(f"!!! - readMotor unit {self.unit}, ioException on read.")
-                self.closeMotor()
-                return READERROR
-            else:
-                loPosition = read.registers[0]
-            position = hiPosition * 65536 + loPosition
         else:
             print(f"!!! - readMotor unit {self.unit}, connectMotor() failed.")
             # emergency close. not sure if this will propagate badly
@@ -775,8 +762,8 @@ class MotorControl:
 
         self.position = position
 
-        T.setLabel(self.unit, position)
-        T.setTmpArr(self.unit, position)
+        T.setLabel(self.unit, self.position)
+        T.setTmpArr(self.unit, self.position)
 
         self.closeMotor()
         return self.position
@@ -1723,7 +1710,7 @@ class LocalIO:
         s[3] = tk.Entry(page[0], width=8, justify=RIGHT, borderwidth=2)
         s[4] = tk.Entry(page[0], width=8, justify=RIGHT, borderwidth=2)
         s[1].insert(0, M1.speed)
-        s[2].insert(0, M2.spped)
+        s[2].insert(0, M2.speed)
         s[3].insert(0, M3.speed)
         s[4].insert(0, M4.speed)
         s[1].grid(row=4, column=7)
