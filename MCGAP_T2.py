@@ -418,7 +418,7 @@ class MotorControl:
             print(f"!!! connectMotor: Can't connect to unit {self.unit}")
             return False
         
-        read = self.client.read_holding_registers(0x0081, 1, unit=self.unit)
+        read = self.client.read_holding_registers(0x007F, 1, unit=self.unit)
         if read.isError():
             print(f"!!! connectMotor: Unit {self.unit} got modbus error: {read.message}")
             self.connected = False
