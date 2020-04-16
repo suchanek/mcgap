@@ -857,11 +857,11 @@ class MotorControl:
 
         if int(delta) > 0:
             if DBG2:
-                print(f">>> sendMotor: Send Forward unit: {self.unit} from {self.position} to {self.target})
+                print(f">>> sendMotor: Send Forward unit: {self.unit} from {self.position} to {self.target}")
 
         if int(delta) < 0:
             if DBG2:
-                print(">>> sendMotor: Send Reverse unit: {self.unit} from {self.position} to {self.target})
+                print(f">>> sendMotor: Send Reverse unit: {self.unit} from {self.position} to {self.target}")
 
         if self.outOfRange(delta):
             print("!!! sendMotor: SEND IS OUT OF RANGE. RETURN")
