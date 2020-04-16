@@ -676,21 +676,13 @@ class MotorControl:
         # how many times total we try
         maxTries = 5
 
-        read = self.client.read_holding_registers(0x00C6, 1, unit=self.unit)
-        if read.isError():
-            print(f"!!! checkAlrm: got modbus exception: {ExceptionCodes.get(read.exception_code)}")
-            return
-
-        hi = read.registers[0]
-        read = self.client.read_holding_registers(0x00C7, 1, unit=self.unit)
-        if read.isError():
-            print(f"!!! checkAlrm: got modbus exception: {ExceptionCodes.get(read.exception_code)}")
-            return
-
-        lo = read.registers[0]
-        rp = hi * 65536 + lo
+        rp = self.getPosition()
         if DBG:
             print(f">>> readDelay IN {target} pos {rp}")
+
+        if rp == READERROR:
+            print(f"!!! readDelay: can't get motor position. RETURN")
+            return READERROR
 
         delay = (abs(rp - target)) * 1.2 / self.speed
         ldelay = delay
@@ -698,7 +690,7 @@ class MotorControl:
 
         tk.Label(page[self.unit], font='Ariel 13', foreground="#FF0000", text=msg).place(x=90, y=10, width=350, height=25)
 
-        while rp != target:
+        while rp != target and rp != READERROR:
             reps += 1
             if DBG:
                 print(f">>> readDelay: Unit {self.unit} attempt {reps}")
@@ -725,20 +717,8 @@ class MotorControl:
             main.update()
             sleep(delay)
 
-            read = self.client.read_holding_registers(0x00C6, 1, unit=self.unit)
-            if read.isError():
-                print("!!! readDelay: Can't read holding register, return")
-                return READERROR
-
-            hi = read.registers[0]
-            read = self.client.read_holding_registers(0x00C7, 1, unit=self.unit)
-            if read.isError():
-                print("!!! readDelay: Can't read holding register, return")
-                return READERROR
-
-            lo = read.registers[0]
-            ### how do you add these ???
-            rp = hi * 65536 + lo
+            rp = self.getPosition()
+            
             print(f">>> readDelay: current pos is {rp}, target is {target}")
             main.config(cursor="")
 
@@ -800,6 +780,38 @@ class MotorControl:
 
         self.closeMotor()
         return self.position
+
+    def getPosition(self):
+        """
+		Read the position of the 'unit' motor. Assumes motor is connected.
+
+		:Return position or READERROR if any exceptions
+		"""
+
+        position = READERROR # set this initially to an error. Is only reset if can be read.
+        hiPosition = loPosition = 0
+
+        if TEST:
+            return 1000
+
+        read = self.client.read_holding_registers(0x00C6, 1, unit=self.unit)
+        if read.isError():
+            log.debug(read)
+            print(f"!!! - getPosition unit {self.unit}, ioException on read.")
+            return READERROR
+        else:
+            hiPosition = read.registers[0]
+ 
+        read = self.client.read_holding_registers(0x00C7, 1, unit=self.unit)
+        if read.isError():
+            log.debug(read)
+            print(f"!!! - getPosition unit {self.unit}, ioException on read.")
+            return READERROR
+        else:
+            loPosition = read.registers[0]
+        
+        position = hiPosition * 65536 + loPosition
+        return position
 
     def getTarget(self):
         """
@@ -867,7 +879,7 @@ class MotorControl:
         setPosition = int(self.target)
 
         hiPosition = int(setPosition / 65536)
-        lowPosition = setPosition - hiPosition * 65536
+        lowPosition = setPosition % 65536
 
         if DBG:
             print(f">>> sendmMotor: Send unit {self.unit} TO {setPosition}")
