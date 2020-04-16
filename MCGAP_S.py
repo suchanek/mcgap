@@ -451,12 +451,8 @@ class MotorControl:
         cp = self.readMotor()
         jogPosition = int(delta) + cp
 
-        if int(delta) > 65535:
-            deltaHi = int(int(delta) / 65536)
-            deltaLow = int(delta) - deltaHi
-        else:
-            deltaHi = 0
-            deltaLow = int(delta)
+        deltaHi = int(int(delta) / 65536)
+        deltaLow = int(delta) - deltaHi * 65536
 
         if cp == READERROR:
             print(f"!!! jogMotor cannot read unit {self.unit}")
@@ -870,60 +866,55 @@ class MotorControl:
         # get the desired target position
         setPosition = int(self.target)
 
-        if setPosition > 65535:
-            hiPosition = int(setPosition / 65536)
-            lowPosition = setPosition - hiPosition
-        else:
-            hiPosition = 0
-            lowPosition = setPosition
+        hiPosition = int(setPosition / 65536)
+        lowPosition = setPosition - hiPosition * 65536
 
         if DBG:
             print(f">>> sendmMotor: Send unit {self.unit} TO {setPosition}")
 
-        else:
-            if self.connectMotor():
-                # needs error checking against alarm
-                alarm = self.chkAlrm()
-                if alarm:
-                    self.showAlarm(alarm)
+        if self.connectMotor():
+            # needs error checking against alarm
+            alarm = self.chkAlrm()
+            if alarm:
+                self.showAlarm(alarm)
 
+            self.client.write_register(0x7D, 0x20, unit=self.unit)
+            self.client.write_register(0x1801, 1, unit=self.unit)
+            #self.client.write_register(0x0383, 1, unit=self.unit)
+            self.client.write_register(0x1805, self.speed, unit=self.unit)
+            self.client.write_register(0x1802, hiPosition, unit=self.unit)
+            self.client.write_register(0x1803, lowPosition, unit=self.unit)
+            self.client.write_register(0x7D, 0x8, unit=self.unit)
+            rp = self.readDelay(setPosition)
+
+            if rp == READERROR:
+                print("!!! sendMotor: bad result from readDelay! Return")
+                msg = "Motor " + str(self.unit) +" is not available"
+                message(self.unit, 1, msg)
+                self.closeMotor()
+                return READERROR
+
+            if self.unit > 20:
                 self.client.write_register(0x7D, 0x20, unit=self.unit)
+                self.client.write_register(0x7D, 0x0, unit=self.unit)
                 self.client.write_register(0x1801, 1, unit=self.unit)
-                #self.client.write_register(0x0383, 1, unit=self.unit)
                 self.client.write_register(0x1805, self.speed, unit=self.unit)
-                self.client.write_register(0x1802, hiPosition, unit=self.unit)
-                self.client.write_register(0x1803, lowPosition, unit=self.unit)
+                self.client.write_register(0x1803, setPosition - 10, unit=self.unit)
                 self.client.write_register(0x7D, 0x8, unit=self.unit)
                 rp = self.readDelay(setPosition)
 
-                if rp == READERROR:
-                    print("!!! sendMotor: bad result from readDelay! Return")
-                    msg = "Motor " + str(self.unit) +" is not available"
-                    message(self.unit, 1, msg)
-                    self.closeMotor()
-                    return READERROR
+                self.client.write_register(0x7D, 0x20, unit=self.unit)
+                self.client.write_register(0x7D, 0x0, unit=self.unit)
+                self.client.write_register(0x1801, 1, unit=self.unit)
+                self.client.write_register(0x1805, self.speed, unit=self.unit)
+                self.client.write_register(0x1803, setPosition, unit=self.unit)
+                self.client.write_register(0x7D, 0x8, unit=self.unit)
+                rp = self.readDelay(setPosition)
+        else:
+            print("!!! sendMotor: can't connect to unit {self.unit}. Return")
+            return READERROR
 
-                if self.unit > 20:
-                    self.client.write_register(0x7D, 0x20, unit=self.unit)
-                    self.client.write_register(0x7D, 0x0, unit=self.unit)
-                    self.client.write_register(0x1801, 1, unit=self.unit)
-                    self.client.write_register(0x1805, self.speed, unit=self.unit)
-                    self.client.write_register(0x1803, setPosition - 10, unit=self.unit)
-                    self.client.write_register(0x7D, 0x8, unit=self.unit)
-                    rp = self.readDelay(setPosition)
-
-                    self.client.write_register(0x7D, 0x20, unit=self.unit)
-                    self.client.write_register(0x7D, 0x0, unit=self.unit)
-                    self.client.write_register(0x1801, 1, unit=self.unit)
-                    self.client.write_register(0x1805, self.speed, unit=self.unit)
-                    self.client.write_register(0x1803, setPosition, unit=self.unit)
-                    self.client.write_register(0x7D, 0x8, unit=self.unit)
-                    rp = self.readDelay(setPosition)
-            else:
-                print("!!! sendMotor: can't connect to unit {self.unit}. Return")
-                return READERROR
-
-            self.closeMotor()
+        self.closeMotor()
 
         # Location[self.unit] = rp
         I.setEntry(self.unit, rp)
