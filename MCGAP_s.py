@@ -51,7 +51,7 @@ filemenu = 0
 limitSet = "Show"
 # i don't know if this is right but DISABLE is used and wasn't defined globally
 DISABLE = 0
-TEST = 0
+TEST = 1
 DBG = 1
 DBG2 = 0
 
@@ -421,14 +421,15 @@ class MotorControl:
 
     def jogMotor(self, delta):
         """
-        Adjust motor position by delta. Functions called within this routine
+		Adjust motor position by delta. Functions called within this routine
         that read/write to the motor should NOT call connectMotor() or closeMotor().
 
-        :param: delta correction for new motor position
-        :return: new position, or READERROR otherwise
-        """
+		:param: delta correction for new motor position
+		:return: new position, or READERROR otherwise
+		"""
         global tk
         cp = READERROR
+        alarm = 0
 
         if DBG:
             print(f">>> jogMotor Unit: {self.unit}, Delta: {delta}")
@@ -448,30 +449,103 @@ class MotorControl:
 
         cp = self.readMotor()
         jogPosition = int(delta) + cp
-        self.target = jogPosition
-        self.sendMotor()
 
-        rp = self.readMotor()
+        deltaHi = int(int(delta) / 65536)
+        deltaLow = int(delta) - deltaHi * 65536
 
-        if self.unit == 1:
+        if cp == READERROR:
+            print(f"!!! jogMotor cannot read unit {self.unit}")
+            msg = "Motor " + str(unit) +" is not available"
+            message(self.unit, 1, msg)
+            return READERROR
+
+        if self.connectMotor():
+            # needs error checking against alarm
+            alarm = self.chkAlrm()
+            if alarm:
+                self.showAlarm(alarm)
+
+            alarm = self.chkAlrm()
+            # alarm has not been reset
+            if alarm:
+                self.closeMotor()
+                return READERROR
+
+            self.client.write_register(0x7D, 0x20, unit=self.unit)
+            self.client.write_register(0x1805, self.speed, unit=self.unit)
+
+            if int(delta) > 0:
+                self.client.write_register(0x7D, 0x1000, unit=self.unit)
+                if DBG:
+                    print(f">>> jogmotor: jog {unit} forward from {cp} to {jogPosition} by {delta}")
+
+            if int(delta) < 0:
+                self.client.write_register(0x7D, 0x2000, unit=self.unit)
+                if DBG:
+                    print(f">>> jogmotor: jog {unit} reverse from {cp} to {jogPosition} by {delta}")
+
+            if self.unit <= 20:
+                self.client.write_register(0x02A0, int(deltaHi), unit=self.unit)
+                self.client.write_register(0x02A1, int(deltaLow), unit=self.unit)
+                self.client.write_register(0x7D, 0x8, unit=self.unit)
+                rp = self.readDelay(jogPosition)
+
+                if rp == READERROR:
+                    msg = f"Motor {unit} had a read error"
+                    print(f"!!! jogMotor: Got an error reading unit {self.unit}")
+                    message(unit, 1, msg)
+                    self.closeMotor()
+                    return READERROR
+
+            else:
+                self.client.write_register(0x7D, 0x8, unit=self.unit)
+                self.client.write_register(0x7D, 0x20, unit=self.unit)
+
+                self.client.write_register(0x7D, 0x0, unit=self.unit)
+                self.client.write_register(0x1805, self.speed, unit=self.unit)
+                self.client.write_register(0x02A1, int(delta), unit=self.unit)
+                self.client.write_register(0x7D, 0x8, unit=self.unit)
+                rp = self.readDelay(jogPosition)
+
+                self.client.write_register(0x7D, 0x8, unit=self.unit)
+                self.client.write_register(0x7D, 0x20, unit=self.unit)
+                self.client.write_register(0x7D, 0x0, unit=self.unit)
+                self.client.write_register(0x1805, self.speed, unit=self.unit)
+                self.client.write_register(0x02A1, int(delta), unit=self.unit)
+                self.client.write_register(0x7D, 0x8, unit=self.unit)
+                rp = self.readDelay(jogPosition)
+        else:
+            print(f"!!! jogMotor: can't connect to unit {self.unit} Return")
+            return READERROR
+
+        self.closeMotor()
+
+        if DBG:
+            print(f">>> jogMotor: Success! Jogged unit {self.unit} to {rp}")
+            log.debug(rp)
+
+        if unit == 1:
             slidePos = T.getRadioButn(1, tab1)
             slide.set(slidePos)
-        if self.unit == 2:
+        if unit == 2:
             cmparPos = T.getRadioButn(2, tab2)
             source.set(cmparPos)
-        if self.unit == 3:
+        if unit == 3:
             grat1Pos = T.getRadioButn(3, tab3)
             grate1.set(grat1Pos)
-        if self.unit == 4:
+        if unit == 4:
             grat2Pos = T.getRadioButn(4, tab4)
             grate2.set(grat2Pos)
-        
+
         I.setEntry(self.unit, rp)
         T.setLabel(self.unit, rp)
         T.setTmpArr(self.unit, rp)
 
+        # don't need this since set in readdelay
+        # self.position = rp
+
         if DBG:
-            print(f">>> JogHERE {self.unit} jogPosition = {rp}")
+            print(f">>> JogHERE {unit} jogPosition = {rp}")
         if jogPosition != rp:
             if DBG:
                 print(f"??? jogMotor jogPos {jogPosition}, rp: {rp}")
@@ -496,10 +570,10 @@ class MotorControl:
             if DBG:
                 print(f"!!! outOfRange: Unit: {self.unit} pos {self.position + int(delta)}")
             message(self.unit, 1, msg)
-            #tk.Label(page[self.unit], font='Ariel 13', foreground="#000000", text=msg).place(x=50, y=240, width=350, height=25)
+            # tk.Label(page[self.unit], font='Ariel 13', foreground="#000000", text=msg).place(x=50, y=240, width=350, height=25)
             res = True
         else:
-            #tk.Label(page[self.unit], font='Ariel 13', foreground="#D4D0C8", text=msg).place(x=50, y=240, width=350, height=25)
+            # tk.Label(page[self.unit], font='Ariel 13', foreground="#D4D0C8", text=msg).place(x=50, y=240, width=350, height=25)
             message(self.unit, 2, msg)
             res = False
         return res
@@ -613,8 +687,6 @@ class MotorControl:
             return READERROR
 
         delay = (abs(rp - target)) * 1.2 / self.speed
-        if delay < 1.0:
-             delay = 1.0
         ldelay = delay
         msg = f"Wait {int(10.0 * delay) / 10.0} sec"
 
@@ -626,9 +698,6 @@ class MotorControl:
                 print(f">>> readDelay: Unit {self.unit} attempt {reps}")
 
             delay = (abs(rp - target)) * 1.2 / self.speed
-            if delay < 1.0:
-                delay = 1.0
-            """
             if ldelay < delay:
                 if DBG:
                     print("!!! readDelay: Motor going in wrong direction")
@@ -636,8 +705,7 @@ class MotorControl:
                 self.client.write_register(0x7D, 0x20, unit=self.unit)
                 self.client.write_register(0x7D, 0x0, unit=self.unit)
                 break
-            """
-            if reps == maxTries:
+            if ldelay == delay and reps == maxTries:
                 if DBG:
                     print(f"!!! readDelay: max tries exceeded moving from {rp} to {target}. Return")
                 return READERROR
