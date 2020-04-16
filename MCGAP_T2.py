@@ -133,7 +133,7 @@ def message(unit, _mflag, msg):
     else:
         if DBG2:
             print(unit, "MESSAGE:", msg, ">", page[unit], "<")
-        tk.Label(page[unit], font='Ariel 13', foreground="#F0F0F", text=msg).place(x=100, y=10, width=350, height=25)
+        tk.Label(page[unit], font='Ariel 13', foreground="#F0F0F0", text=msg).place(x=100, y=10, width=350, height=25)
 
 def warn():
     warn2 = "No motor is available."
@@ -411,13 +411,24 @@ class MotorControl:
         res = self.client.connect()
         if res:
             self.connected = True
-            if DBG:
-                print(f">>> connectMotor: Connected unit {self.unit}")
-            return True
+           
+           # return True
         else:
             self.connected = False
             print(f"!!! connectMotor: Can't connect to unit {self.unit}")
             return False
+        
+        read = self.client.read_holding_registers(0x0081, 1, unit=self.unit)
+        if read.isError():
+            print(f"!!! connectMotor: Unit {self.unit} got modbus error: {read.message}")
+            self.connected = False
+            return False
+        else:
+            if DBG:
+                print(f">>> connectMotor: Connected unit {self.unit}")
+            self.connected = True
+            return True
+
 
     def jogMotor(self, delta):
         """
@@ -471,7 +482,7 @@ class MotorControl:
         T.setTmpArr(self.unit, rp)
 
         if DBG:
-            print(f">>> JogHERE {self.unit} jogPosition = {rp}")
+            print(f">>> JogHERE Unit: {self.unit} jogPosition = {rp}")
         if jogPosition != rp:
             if DBG:
                 print(f"??? jogMotor jogPos {jogPosition}, rp: {rp}")
@@ -612,7 +623,7 @@ class MotorControl:
             print(f"!!! readDelay: can't get motor position. RETURN")
             return READERROR
 
-        delay = (abs(rp - target)) * 1.2 / self.speed
+        delay = (abs(rp - target)) * 1.1 / self.speed
         if delay < 1.0:
              delay = 1.0
         ldelay = delay
@@ -625,7 +636,7 @@ class MotorControl:
             if DBG:
                 print(f">>> readDelay: Unit {self.unit} attempt {reps}")
 
-            delay = (abs(rp - target)) * 1.2 / self.speed
+            delay = (abs(rp - target)) * 1.1 / self.speed
             if delay < 1.0:
                 delay = 1.0
             """
@@ -652,6 +663,8 @@ class MotorControl:
             sleep(delay)
 
             rp = self.getPosition()
+            T.setLabel(self.unit, rp)
+            T.setTmpArr(self.unit, rp)
             
             print(f">>> readDelay: current pos is {rp}, target is {target}")
             main.config(cursor="")
@@ -2113,7 +2126,7 @@ M2 = MotorControl(2, port485, 100, 0, 0, 0, 1000, 1000, 0, 1000, 1)
 M3 = MotorControl(3, port485, 10000, 0, 1000, 0, 125000, 100000, 0, 15000, 100)
 M4 = MotorControl(4, port485, 10000, 0, 1000, 0, 125000, 100000, 0, 15000, 100)
 
-if not TEST and not (M1.available and M2.available and M3.available and M4.available):
+if not TEST and not (M1.available or M2.available or M3.available or M4.available):
     warn()
     sys.exit()
 
