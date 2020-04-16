@@ -133,7 +133,7 @@ def message(unit, _mflag, msg):
     else:
         if DBG2:
             print(unit, "MESSAGE:", msg, ">", page[unit], "<")
-        tk.Label(page[unit], font='Ariel 13', foreground="#F0F0F0", text=msg).place(x=100, y=10, width=350, height=25)
+        tk.Label(page[unit], font='Ariel 13', foreground="#FFFFFF", text=msg).place(x=100, y=10, width=350, height=25)
 
 def warn():
     warn2 = "No motor is available."
@@ -429,7 +429,6 @@ class MotorControl:
 		"""
         global tk
         cp = READERROR
-        unit = self.unit
         alarm = 0
 
         if DBG:
@@ -485,19 +484,20 @@ class MotorControl:
                 if DBG:
                     print(f">>> jogmotor: jog {unit} reverse from {cp} to {jogPosition} by {delta}")
 
-            self.client.write_register(0x02A0, int(deltaHi), unit=self.unit)
-            self.client.write_register(0x02A1, int(deltaLow), unit=self.unit)
-            self.client.write_register(0x7D, 0x8, unit=self.unit)
-            rp = self.readDelay(jogPosition)
+            if self.unit <= 20:
+                self.client.write_register(0x02A0, int(deltaHi), unit=self.unit)
+                self.client.write_register(0x02A1, int(deltaLow), unit=self.unit)
+                self.client.write_register(0x7D, 0x8, unit=self.unit)
+                rp = self.readDelay(jogPosition)
 
-            if rp == READERROR:
-                msg = f"Motor {unit} had a read error"
-                print(f"!!! jogMotor: Got an error reading unit {self.unit}")
-                message(unit, 1, msg)
-                self.closeMotor()
-                return READERROR
+                if rp == READERROR:
+                    msg = f"Motor {unit} had a read error"
+                    print(f"!!! jogMotor: Got an error reading unit {self.unit}")
+                    message(unit, 1, msg)
+                    self.closeMotor()
+                    return READERROR
 
-            if unit > 20:
+            else:
                 self.client.write_register(0x7D, 0x8, unit=self.unit)
                 self.client.write_register(0x7D, 0x20, unit=self.unit)
 
@@ -511,7 +511,6 @@ class MotorControl:
                 self.client.write_register(0x7D, 0x20, unit=self.unit)
                 self.client.write_register(0x7D, 0x0, unit=self.unit)
                 self.client.write_register(0x1805, self.speed, unit=self.unit)
-                #self.client.write_register(0x1803, jogPosition, unit=self.unit)
                 self.client.write_register(0x02A1, int(delta), unit=self.unit)
                 self.client.write_register(0x7D, 0x8, unit=self.unit)
                 rp = self.readDelay(jogPosition)
@@ -538,7 +537,6 @@ class MotorControl:
             grat2Pos = T.getRadioButn(4, tab4)
             grate2.set(grat2Pos)
 
-        #Location[self.unit] = rp
         I.setEntry(self.unit, rp)
         T.setLabel(self.unit, rp)
         T.setTmpArr(self.unit, rp)
@@ -561,20 +559,22 @@ class MotorControl:
 		Check if the desired delta position is within normal range
 
 		:param: delta correction for new motor position
-		:return: True if OK, False if out of range
+		:return: False if OK, True if out of range
 		"""
         global tk
-        res = False
+        res = True
 
         msg = f"{self.position} + {int(delta)} is Out of Range"
 
         if self.position + int(delta) < self.lower or self.position + int(delta) > self.upper:
             if DBG:
                 print(f"!!! outOfRange: Unit: {self.unit} pos {self.position + int(delta)}")
-            tk.Label(page[self.unit], font='Ariel 13', foreground="#000000", text=msg).place(x=50, y=240, width=350, height=25)
+            message(self.unit, 1, msg)
+            # tk.Label(page[self.unit], font='Ariel 13', foreground="#000000", text=msg).place(x=50, y=240, width=350, height=25)
             res = True
         else:
-            tk.Label(page[self.unit], font='Ariel 13', foreground="#D4D0C8", text=msg).place(x=50, y=240, width=350, height=25)
+            # tk.Label(page[self.unit], font='Ariel 13', foreground="#D4D0C8", text=msg).place(x=50, y=240, width=350, height=25)
+            message(self.unit, 2, msg)
             res = False
         return res
 
@@ -903,6 +903,7 @@ class MotorControl:
                 self.client.write_register(0x1802, hiPosition, unit=self.unit)
                 self.client.write_register(0x1803, lowPosition, unit=self.unit)
                 self.client.write_register(0x7D, 0x8, unit=self.unit)
+
                 rp = self.readDelay(setPosition)
                 if rp == READERROR:
                     print("!!! sendMotor: bad result from readDelay! Return")
@@ -918,6 +919,7 @@ class MotorControl:
                 self.client.write_register(0x1802, hiPosition, unit=self.unit)
                 self.client.write_register(0x1803, lowPosition, unit=self.unit)
                 self.client.write_register(0x7D, 0x8, unit=self.unit)
+
                 rp = self.readDelay(setPosition)
                 if rp == READERROR:
                     print("!!! sendMotor: bad result from readDelay! Return")
@@ -931,7 +933,6 @@ class MotorControl:
 
         self.closeMotor()
 
-        # Location[self.unit] = rp
         I.setEntry(self.unit, rp)
         T.setLabel(self.unit, rp)
         T.setTmpArr(self.unit, rp)
