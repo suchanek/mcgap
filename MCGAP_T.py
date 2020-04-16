@@ -133,7 +133,7 @@ def message(unit, _mflag, msg):
     else:
         if DBG2:
             print(unit, "MESSAGE:", msg, ">", page[unit], "<")
-        tk.Label(page[unit], font='Ariel 13', foreground="#FFFFFF", text=msg).place(x=100, y=10, width=350, height=25)
+        tk.Label(page[unit], font='Ariel 13', foreground="#F0F0F", text=msg).place(x=100, y=10, width=350, height=25)
 
 def warn():
     warn2 = "No motor is available."
