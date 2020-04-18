@@ -5,8 +5,8 @@
 
 import tkinter as tk
 from tkinter import *
-from tkinter.filedialog   import askopenfilename
-from tkinter.filedialog   import asksaveasfilename
+from tkinter.filedialog import askopenfilename
+from tkinter.filedialog import asksaveasfilename
 from tkinter import ttk
 import serial.tools.list_ports
 
@@ -250,6 +250,7 @@ def updateTabs():
     run()
     return
 
+# This class manages connecting, moving and checking all of the motors.
 class MotorControl:
     """
 	This class contains motor attributes and methods
@@ -276,7 +277,6 @@ class MotorControl:
         self.connected = False
         self.available = self.isAvailable()
         self.resolution = self.getGearing(gearBox)
-        
 
     def isAvailable(self):
         """
@@ -286,12 +286,9 @@ class MotorControl:
 		:param none:
 		:return: True if we can connect to the motor, false otherwise.
 		"""
-        ok = self.connectMotor()
+        # if self.connectMotor() succeeds it sets self.connected and self.available
+        self.connectMotor()
         self.closeMotor()
-        if ok:
-            self.available = True
-        else:
-            self.available = False
         return self.available
 
     def checkLimits(self):
@@ -384,7 +381,7 @@ class MotorControl:
 
     def connectMotor(self):
         """
-		Connect to motor unit
+		Connect to motor unit. Updates self.connected and self.available
 
 		:rtype: Boolean
 		:return: True if success, False otherwise
@@ -411,24 +408,24 @@ class MotorControl:
         res = self.client.connect()
         if res:
             self.connected = True
-           
-           # return True
         else:
             self.connected = False
+            self.available = False
             print(f"!!! connectMotor: Can't connect to unit {self.unit}")
             return False
         
+        # try to read a register. if we can't, then we're really not connected
         read = self.client.read_holding_registers(0x007F, 1, unit=self.unit)
         if read.isError():
             print(f"!!! connectMotor: Unit {self.unit} got modbus error: {read.message}")
             self.connected = False
+            self.available = False
             return False
         else:
             if DBG:
                 print(f">>> connectMotor: Connected unit {self.unit}")
-            self.connected = True
+            self.available = True
             return True
-
 
     def jogMotor(self, delta):
         """
@@ -458,12 +455,19 @@ class MotorControl:
             return self.position
 
         cp = self.readMotor()
+        if cp == READERROR:
+            print(f"!!! jogMotor: can't get unit {self.unit} motor position")
+            return READERROR
+
         jogPosition = int(delta) + cp
         self.target = jogPosition
         
         self.sendMotor(jogPosition)
 
         rp = self.readMotor()
+        if rp == READERROR:
+            print(f"!!! jogMotor: can't get unit {self.unit} motor position")
+            return READERROR
 
         if self.unit == 1:
             slidePos = T.getRadioButn(1, tab1)
@@ -840,8 +844,8 @@ class MotorControl:
                 self.client.write_register(0x1802, hiPosition, unit=self.unit)
                 self.client.write_register(0x1803, lowPosition, unit=self.unit)
                 self.client.write_register(0x7D, 0x8, unit=self.unit)
+                
                 rp = self.readDelay(setPosition)
-
                 if rp == READERROR:
                     print("!!! sendMotor: bad result from readDelay! Return")
                     msg = "Motor " + str(self.unit) +" is not available"
@@ -931,7 +935,7 @@ class MotorControl:
                 print(f">>> getGearing: Speed {self.speed}")
             self.closeMotor()
         else:
-            print("!!! getGearing: Unable to check motor status.")
+            print(f"!!! getGearing: Unable to check motor status for {self.unit}")
             return READERROR
 
         # verify requested gearing is integer and adjust gearB if needed
@@ -975,7 +979,6 @@ class MotorControl:
 
         if DBG:
             print(f">>> setMotor: Unit {unit}, to {location}")
-        # TODO: error trapping here
 
         res = self.sendMotor(location)
 
@@ -1068,7 +1071,6 @@ class InputControl:
 
         return True
 
-
     def convertL2S(self, lstr):
         # initialization of string to ""
         new = ""
@@ -1119,7 +1121,6 @@ class InputControl:
         if _val < 0:
             st = "-" + st
         return st
-
 
     def convertS2(self, _val, res):
         # convert a step value to degrees, decimal minutes
@@ -1852,7 +1853,6 @@ class TabControl:
             closest = T.getClosest(unit, position, tab2)
             tmp2[closest][2] = position
             tab2 = copy.deepcopy(tmp2)
-
 
 class MakeTab:
     '''
