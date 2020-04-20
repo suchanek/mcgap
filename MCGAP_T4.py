@@ -266,7 +266,7 @@ class MotorControl:
         self.offset = offset
         self.stp = 1
         self.deg = 1
-        self.client = ModbusClient(method='rtu')
+        self.client = 0
         self.target = 0 # targeted step location
         self.connected = False
         self.available = self.isAvailable()
@@ -681,7 +681,7 @@ class MotorControl:
             self.position = rp
         
         if DBG:
-            print(f">>> readDelay unit: {self.unit} out: {rp}")
+            print(f">>> readDelay success. unit: {self.unit} out: {rp}")
         
         tk.Label(page[self.unit], font='Ariel 13', foreground="#F0F0F0", text=msg).place(x=90, y=10, width=350, height=25)
         return self.position
@@ -707,8 +707,6 @@ class MotorControl:
                 return READERROR
         else:
             print(f"!!! - readMotor unit {self.unit}, connectMotor() failed.")
-            # emergency close. not sure if this will propagate badly
-            self.closeMotor()
             return READERROR
 
         self.position = position
@@ -758,7 +756,6 @@ class MotorControl:
         """
         location = T.getLabel(self.unit)
 
-        self.target = location
         self.sendMotor(location)
 
         if DBG2:
@@ -963,7 +960,6 @@ class MotorControl:
             location = [int(i[2]) for i in tab3][grate1.get()]
         if self.unit == 4:
             location = [int(i[2]) for i in tab4][grate2.get()]
-        self.target = location
 
         if DBG:
             print(f">>> setMotor: Unit {unit}, to {location}")
