@@ -36,8 +36,9 @@ FORMAT = ('%(asctime)-15s %(threadName)-15s '
 # http://www.simplymodbus.ca/exceptions.htm
 ExceptionCodes = {1: 'Illegal Function', 2: 'Illegal Data Address',
                   3: 'Illegal Data Value', 4: 'Slave Device Failure', 5: 'Acknowledge',
-                  6: 'Slave Device Busy', 7: 'Negative Acknowlege', 8: 'Memory Parity Error',
-                  10: 'Gateway Path Unavailable', 11: 'Gateway Target Device Failed to respond'}
+                  6: 'Slave Device Busy', 7: 'Negative Acknowlege',
+                  8: 'Memory Parity Error', 10: 'Gateway Path Unavailable',
+                  11: 'Gateway Target Device Failed to respond'}
 
 logging.basicConfig(format=FORMAT)
 log = logging.getLogger()
@@ -50,15 +51,6 @@ limitSet = "Show"
 TEST = 0
 DBG = 1
 DBG2 = 0
-
-# Location = [0, 0, 0, 0, 0] # array of current coordinates
-#Reference = [0, 0, 0, 0, 0]
-#Zero = [0, 3000, 0, 1000, 1000]
-#Speed = [0, 100, 100, 10000, 10000]
-#Resolution = [0, 1000, 1000, 100000, 100000]
-#Lower = [0, 0, 0, 0, 0]
-#Upper = [0, 8000, 1000, 125000, 125000]
-#Offset = [0, 8000, 1000, 15000, 15000]
 
 # Initialize arrays
 e = [0, 0, 0, 0, 0, 0, 0, 0]
@@ -90,12 +82,18 @@ DFLT_PATH = PATH.joinpath(DFLT_FILENAME)
 DFLT_POSIX = DFLT_PATH.as_posix()
 
 def play_sound(sound_file):
+    """
+    Play a sound
+    """
     wave_obj = sa.WaveObject.from_wave_file(sound_file)
     play_obj = wave_obj.play()
     play_obj.wait_done()
     return
 
 def beep(repeat):
+    """
+    Play a beep 'repeat' times.
+    """
     while repeat:
         play_sound('ping.wav')
         repeat -= 1
@@ -118,6 +116,9 @@ def menu():
     menubar.add_cascade(label="File", menu=filemenu)
 
 def message(unit, _mflag, msg):
+    """
+    Display a message in a window.
+    """
     global page
 
     if _mflag == 1:
@@ -131,6 +132,9 @@ def message(unit, _mflag, msg):
         tk.Label(page[unit], font='Ariel 13', foreground="#F0F0F0", text=msg).place(x=100, y=10, width=350, height=25)
 
 def warn():
+    """
+    Display a warning message in a window.
+    """
     warn2 = "No motor is available."
     warn3 = "Connect and turn on motors."
     temp = tk.Tk()
@@ -155,6 +159,9 @@ def warn():
     return
 
 def run():
+    """
+    Main loop for running the motors.
+    """
     global nb
 
     if M1.available:
@@ -251,7 +258,8 @@ class MotorControl:
 	This class contains motor attributes and methods
 	"""
 
-    def __init__(self, unit, port, speed, position, zero, lower, upper, resolution, reference, offset, gearBox):
+    def __init__(self, unit, port, speed, position, zero, lower, upper, resolution,
+                 reference, offset, gearBox):
         """
         :rtype: object
         """
@@ -372,7 +380,7 @@ class MotorControl:
             self.connected = False
             self.available = False
             return False
-        
+
         if isinstance(self.client, ModbusException):
             print("!!! connectMotor: Modbus ioexception for unit ", self.unit)
             self.connected = False
@@ -390,19 +398,6 @@ class MotorControl:
             self.available = False
             print(f"!!! connectMotor: Can't connect to unit {self.unit}")
             return False
-        
-        # check for alarm status
-        alarm = self.chkAlrm()
-        if alarm:
-            self.showAlarm(alarm)
-
-        # check again to see if user has reset the alarm
-        alarm = self.chkAlrm()
-        if alarm:
-            self.connected = False
-            self.available = False
-            print(f"!!! connectMotor: unit {self.unit} has an alarm: {alarm}")
-            return False
 
         # try to read a register. if we can't, then we're really not connected
         read = self.client.read_holding_registers(0x007F, 1, unit=self.unit)
@@ -412,6 +407,14 @@ class MotorControl:
             self.available = False
             return False
         else:
+             # check again to see if user has reset the alarm
+            alarm = self.checkAlarm()
+            if alarm:
+                self.connected = False
+                self.available = False
+                print(f"!!! connectMotor: unit {self.unit} has an alarm: {alarm}")
+                return False
+
             if DBG:
                 print(f">>> connectMotor: Connected unit {self.unit}")
             self.available = True
@@ -450,7 +453,7 @@ class MotorControl:
             return READERROR
 
         jogPosition = int(delta) + cp
-        
+
         self.sendMotor(jogPosition)
 
         rp = self.readMotor()
@@ -470,7 +473,7 @@ class MotorControl:
         if self.unit == 4:
             grat2Pos = T.getRadioButn(4, tab4)
             grate2.set(grat2Pos)
-        
+
         I.setEntry(self.unit, rp)
         T.setLabel(self.unit, rp)
         T.setTmpArr(self.unit, rp)
@@ -509,7 +512,7 @@ class MotorControl:
             res = False
         return res
 
-    def chkAlrm(self):
+    def checkAlarm(self):
         """
 		Check the given object for alarm conditions.
 		:return: alarm or READERROR otherwise. Assumes motor
@@ -527,7 +530,7 @@ class MotorControl:
 
         read = self.client.read_holding_registers(0x007F, 1, unit=self.unit)
         if read.isError():
-            print(f"!!! checkAlrm: got modbus exception: {ExceptionCodes.get(read.exception_code)}")
+            print(f"!!! checkAlrm: got modbus exception: {read.message}")
             return READERROR
         else:
             alarm = read.registers[0] # returned 32 with normal operation
@@ -619,9 +622,9 @@ class MotorControl:
             print(f"!!! readDelay: can't get motor position. RETURN")
             return READERROR
 
-        delay = (abs(rp - target)) * 1.1 / self.speed
-        if delay < 1.0:
-            delay = 1.0
+        delay = (abs(rp - target)) * 1.2 / self.speed
+        if delay == 0.0:
+            delay = 0.1
 
         ldelay = delay
         msg = f"Wait {int(10.0 * delay) / 10.0} sec"
@@ -632,9 +635,10 @@ class MotorControl:
             if DBG:
                 print(f">>> readDelay: Unit {self.unit} attempt {reps}")
 
-            delay = (abs(rp - target)) * 1.1 / self.speed
-            if delay < 1.0:
-                delay = 1.0
+            delay = (abs(rp - target)) * 1.2 / self.speed
+            if delay == 0:
+                delay = 0.1
+                ldelay = delay
 
             if ldelay < delay:
                 if DBG:
@@ -654,9 +658,10 @@ class MotorControl:
             sleep(delay)
 
             rp = self.getPosition()
+
             T.setLabel(self.unit, rp)
             T.setTmpArr(self.unit, rp)
-            
+
             main.config(cursor="")
             print(f">>> readDelay: current pos is {rp}, target is {target}")
 
@@ -668,6 +673,8 @@ class MotorControl:
                 print(f"!!! readDelay: at Limit for unit {self.unit}. RETURN")
                 return ATLIMIT
             reps += 1
+            if rp == self.target:
+                break
         # end while
 
         if reps == maxTries and rp != target:
@@ -679,10 +686,10 @@ class MotorControl:
             return READERROR
         elif rp == target:
             self.position = rp
-        
+
         if DBG:
             print(f">>> readDelay success. unit: {self.unit} out: {rp}")
-        
+
         tk.Label(page[self.unit], font='Ariel 13', foreground="#F0F0F0", text=msg).place(x=90, y=10, width=350, height=25)
         return self.position
 
@@ -737,7 +744,6 @@ class MotorControl:
             return READERROR
         else:
             hiPosition = read.registers[0]
- 
         read = self.client.read_holding_registers(0x00C7, 1, unit=self.unit)
         if read.isError():
             log.debug(read)
@@ -745,7 +751,7 @@ class MotorControl:
             return READERROR
         else:
             loPosition = read.registers[0]
-        
+
         position = hiPosition * 65536 + loPosition
         return position
 
@@ -772,7 +778,7 @@ class MotorControl:
         pos = READERROR
         delta = 0
         rp = 0
-        alarm = 0
+
         self.target = location
 
         if TEST:
@@ -821,20 +827,18 @@ class MotorControl:
             print(f">>> sendmMotor: Send unit {self.unit} TO {setPosition}")
 
         if self.connectMotor():
-            # needs error checking against alarm
-            
-            if self.unit <= 20:
+            if self.unit <= 2:
                 self.client.write_register(0x7D, 0x20, unit=self.unit)
                 self.client.write_register(0x1801, 1, unit=self.unit)
                 self.client.write_register(0x1805, self.speed, unit=self.unit)
                 self.client.write_register(0x1802, hiPosition, unit=self.unit)
                 self.client.write_register(0x1803, lowPosition, unit=self.unit)
                 self.client.write_register(0x7D, 0x8, unit=self.unit)
-                
+
                 rp = self.readDelay(setPosition)
                 if rp == READERROR:
-                    print("!!! sendMotor: bad result from readDelay! Return")
-                    msg = "Motor " + str(self.unit) +" is not available"
+                    print(f"!!! sendMotor: unit {self.unit}: bad result from readDelay! Return")
+                    msg = f"Motor {self.unit} is not available"
                     message(self.unit, 1, msg)
                     self.closeMotor()
                     return READERROR
@@ -849,8 +853,8 @@ class MotorControl:
 
                 rp = self.readDelay(setPosition)
                 if rp == READERROR:
-                    print("!!! sendMotor: bad result from readDelay! Return")
-                    msg = "Motor " + str(self.unit) +" is not available"
+                    print(f"!!! sendMotor: unit {self.unit}: bad result from readDelay! Return")
+                    msg = f"Motor {self.unit} is not available"
                     message(self.unit, 1, msg)
                     self.closeMotor()
                     return READERROR
@@ -866,12 +870,12 @@ class MotorControl:
                 rp = self.readDelay(setPosition)
                 if rp == READERROR:
                     print("!!! sendMotor: bad result from readDelay! Return")
-                    msg = "Motor " + str(self.unit) +" is not available"
+                    msg = f"Motor {self.unit} is not available"
                     message(self.unit, 1, msg)
                     self.closeMotor()
                     return READERROR
         else:
-            print("!!! sendMotor: can't connect to unit {self.unit}. Return")
+            print(f"!!! sendMotor: can't connect to unit {self.unit}. Return")
             return READERROR
 
         self.closeMotor()
@@ -882,7 +886,7 @@ class MotorControl:
 
         self.position = rp
         if DBG:
-            print(f">>> sendMotor {self.unit} {self.position} Speed {self.speed} succeeded")
+            print(f">>> sendMotor: Unit {self.unit} {self.position} Speed {self.speed} succeeded")
 
         # all good, return the final position
         return rp
@@ -909,7 +913,7 @@ class MotorControl:
                 print("!!! getGearing: got modbus exception: ", ExceptionCodes.get(read.exception_code))
             else:
                 gearA = read.registers[0]
-            
+
             read = self.client.read_holding_registers(0x0383, 1, unit=self.unit)
             if read.isError():
                 print("!!! getGearing: got modbus exception: ", ExceptionCodes.get(read.exception_code))
@@ -936,7 +940,7 @@ class MotorControl:
             return READERROR
 
         self.resolution = int(1000 * gearB / gearA * gearBox)
-        
+
         if DBG:
             print(f">>> getGearing: Adjusted gearA to {gearA} gearB to {gearB}")
             print(f">>> getGearing: Motor {self.unit} Resolution {self.resolution}")
@@ -962,12 +966,12 @@ class MotorControl:
             location = [int(i[2]) for i in tab4][grate2.get()]
 
         if DBG:
-            print(f">>> setMotor: Unit {unit}, to {location}")
+            print(f">>> setMotor: Unit {self.unit}, to {location}")
 
         res = self.sendMotor(location)
 
         if res == READERROR:
-            print(f"!!! setMotor: Unit {unit}, to {location} failed.")
+            print(f"!!! setMotor: Unit {self.unit}, to {location} failed.")
             return False
         else:
             return True
@@ -1037,7 +1041,7 @@ class InputControl:
 
         if int(_val) < 0:
             _val = "0"
-        
+
         if t == 1:
             upper = M1.upper
         elif t == 2:
@@ -1360,7 +1364,7 @@ class LocalIO:
          .
         :return: selected filename
         """
-       
+
         # global pos1, pos2, pos3, pos4
         # item1, item2, item3, item4 = 0
         global tab1, tab2, tab3, tab4
@@ -1988,7 +1992,7 @@ class MakeTab:
                 M3.resolution = int(line[2])
                 if line[1] == 'ref':
                     M3.reference = int(line[2])
-                
+
         row1 = 0; row2 = 0
         for line in jog3:
             if line[1] == 'jog':
@@ -2011,7 +2015,7 @@ class MakeTab:
         :param unit: motor index number.
         :return:
         """
-        
+
         steps, degree = self.getIntegerRatio(M4.resolution)
 
         nb.add(page[4], text="Grating 2", sticky='NESW')

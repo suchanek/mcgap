@@ -2119,7 +2119,7 @@ Motor check.
 """
 
 # do full initialization of the objects
-port485 = "COM6"
+port485 = "COM14"
 
 M1 = MotorControl(1, port485, 1000, 0, 3000, 0, 8000, 1000, 0, 8000, 1)
 M2 = MotorControl(2, port485, 100, 0, 0, 0, 1000, 1000, 0, 1000, 1)
