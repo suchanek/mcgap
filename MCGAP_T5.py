@@ -47,7 +47,7 @@ READERROR = -999 # returned when can't read a motor
 ATLIMIT = -888
 filemenu = 0
 limitSet = "Show"
-TEST = 0
+TEST = 1
 DBG = 1
 DBG2 = 0
 
@@ -289,8 +289,12 @@ class MotorControl:
 		:return: True if we can connect and read from the motor, false otherwise.
 		"""
         # if self.connectMotor() succeeds it sets self.connected and self.available
-        self.connectMotor()
+        ok = self.connectMotor()
         self.closeMotor()
+        if ok:
+            self.available = True
+        else:
+            self.available = False
         return self.available
 
     def checkLimits(self):

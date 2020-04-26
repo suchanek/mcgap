@@ -36,7 +36,8 @@ FORMAT = ('%(asctime)-15s %(threadName)-15s '
 
 # http://www.simplymodbus.ca/exceptions.htm
 ExceptionCodes = {1: 'Illegal Function', 2: 'Illegal Data Address',
-                  3: 'Illegal Data Value', 4: 'Slave Device Failure', 5: 'Acknowledge',
+                  3: 'Illegal Data Value', 4: 'Slave Device Failure', 
+                  5: 'Acknowledge',
                   6: 'Slave Device Busy', 7: 'Negative Acknowlege',
                   8: 'Memory Parity Error', 10: 'Gateway Path Unavailable',
                   11: 'Gateway Target Device Failed to respond'}
@@ -49,7 +50,7 @@ READERROR = -999  # returned when can't read a motor
 ATLIMIT = -888
 filemenu = 0
 limitSet = "Show"
-TEST = 0
+TEST = 1
 DBG = 1
 DBG2 = 0
 
@@ -371,6 +372,7 @@ class MotorControl:
         if TEST:
             self.client = ModbusClient(method='rtu', baudrate=9600)
             self.connected = True
+            self.available = True
             return True
 
         self.client = ModbusClient(method='rtu', port=self.port, retries=100, timeout=0.5,
@@ -409,7 +411,7 @@ class MotorControl:
             self.available = False
             return False
         else:
-            # check again to see if user has reset the alarm
+            # check to see if we have an alarm
             alarm = self.checkAlarm()
             if alarm:
                 self.connected = False
@@ -437,13 +439,11 @@ class MotorControl:
             print(f">>> jogMotor Unit: {self.unit}, Delta: {delta}")
 
         if self.outOfRange(delta):
-            if DBG:
-                print(f"!!! jogMotor Unit: {self.unit}: Jog is out of range! Returning")
+            print(f"!!! jogMotor Unit: {self.unit}: Jog is out of range! Returning")
             return READERROR
 
         if TEST:
             self.position = self.position + int(delta)
-            #Location[self.unit] = self.position
             I.setEntry(self.unit, self.position)
             T.setLabel(self.unit, self.position)
             T.setTmpArr(self.unit, self.position)
@@ -481,7 +481,7 @@ class MotorControl:
         T.setTmpArr(self.unit, rp)
 
         if DBG:
-            print(f">>> JogHERE Unit: {self.unit} jogPosition = {rp}")
+            print(f">>> jogMotor Unit: {self.unit} jogPosition = {rp}")
         if jogPosition != rp:
             if DBG:
                 print(f"??? jogMotor jogPos {jogPosition}, rp: {rp}")
@@ -505,10 +505,8 @@ class MotorControl:
             if DBG:
                 print(f"!!! outOfRange: Unit: {self.unit} pos {self.position + int(delta)}")
             message(self.unit, 1, msg)
-            #tk.Label(page[self.unit], font='Ariel 13', foreground="#000000", text=msg).place(x=50, y=240, width=350, height=25)
             res = True
         else:
-            #tk.Label(page[self.unit], font='Ariel 13', foreground="#D4D0C8", text=msg).place(x=50, y=240, width=350, height=25)
             message(self.unit, 2, msg)
             res = False
         return res
@@ -699,7 +697,8 @@ class MotorControl:
     def readMotor(self):
         """
         Read the position of the 'unit' motor. Manages its own connect/disconnct.
-        :Return position or READERROR if any exceptions
+        Sets self.location.
+        :Return: position or READERROR if any exceptions
         """
         global tk
         position = READERROR  # set this initially to an error. Is only reset if can be read.
@@ -734,7 +733,7 @@ class MotorControl:
 
         # set this initially to an error. Is only reset if can be read.
         position = READERROR
-        hiPosition = loPosition = 0
+        highPosition = lowPosition = 0
 
         if TEST:
             return 1000
@@ -745,16 +744,16 @@ class MotorControl:
             print(f"!!! - getPosition unit {self.unit}, ioException on read.")
             return READERROR
         else:
-            hiPosition = read.registers[0]
+            highPosition = read.registers[0]
         read = self.client.read_holding_registers(0x00C7, 1, unit=self.unit)
         if read.isError():
             log.debug(read)
             print(f"!!! - getPosition unit {self.unit}, ioException on read.")
             return READERROR
         else:
-            loPosition = read.registers[0]
+            lowPosition = read.registers[0]
 
-        position = hiPosition * 65536 + loPosition
+        position = highPosition * 65536 + lowPosition
         return position
 
     def getTarget(self):
@@ -785,7 +784,6 @@ class MotorControl:
 
         if TEST:
             self.position = self.target
-            # Location[self.unit] = self.position
             I.setEntry(self.unit, self.position)
             T.setLabel(self.unit, self.position)
             T.setTmpArr(self.unit, self.position)
@@ -796,7 +794,6 @@ class MotorControl:
 
         pos = self.readMotor()
         if pos == READERROR:
-            # we couldn't read the motor!
             msg = f"Motor {self.unit} is not available"
             print(f"!!! sendMotor: could not read unit {self.unit}")
             message(self.unit, 1, msg)
@@ -822,7 +819,7 @@ class MotorControl:
         # get the desired target position
         setPosition = int(self.target)
 
-        hiPosition = int(setPosition / 65536)
+        highPosition = int(setPosition / 65536)
         lowPosition = setPosition % 65536
 
         if self.connectMotor():
@@ -830,7 +827,7 @@ class MotorControl:
                 self.client.write_register(0x7D, 0x20, unit=self.unit)
                 self.client.write_register(0x1801, 1, unit=self.unit)
                 self.client.write_register(0x1805, self.speed, unit=self.unit)
-                self.client.write_register(0x1802, hiPosition, unit=self.unit)
+                self.client.write_register(0x1802, highPosition, unit=self.unit)
                 self.client.write_register(0x1803, lowPosition, unit=self.unit)
                 self.client.write_register(0x7D, 0x8, unit=self.unit)
 
@@ -846,7 +843,7 @@ class MotorControl:
                 self.client.write_register(0x7D, 0x0, unit=self.unit)
                 self.client.write_register(0x1801, 1, unit=self.unit)
                 self.client.write_register(0x1805, self.speed, unit=self.unit)
-                self.client.write_register(0x1802, hiPosition, unit=self.unit)
+                self.client.write_register(0x1802, highPosition, unit=self.unit)
                 self.client.write_register(0x1803, lowPosition, unit=self.unit)
                 self.client.write_register(0x7D, 0x8, unit=self.unit)
 
@@ -862,7 +859,7 @@ class MotorControl:
                 self.client.write_register(0x7D, 0x0, unit=self.unit)
                 self.client.write_register(0x1801, 1, unit=self.unit)
                 self.client.write_register(0x1805, self.speed, unit=self.unit)
-                self.client.write_register(0x1802, hiPosition, unit=self.unit)
+                self.client.write_register(0x1802, highPosition, unit=self.unit)
                 self.client.write_register(0x1803, lowPosition, unit=self.unit)
                 self.client.write_register(0x7D, 0x8, unit=self.unit)
 
@@ -977,8 +974,6 @@ class MotorControl:
     def stopMotor(self):
         """
         Stop the motor
-        :param unit: motor index number,
-        :param tab: Tab number
         :return: None
         """
         # should check this for errors if possible...
@@ -1377,11 +1372,8 @@ class LocalIO:
         :return: selected filename
         """
 
-        # global pos1, pos2, pos3, pos4
-        # item1, item2, item3, item4 = 0
         global tab1, tab2, tab3, tab4
         global tmp1, tmp2, tmp3, tmp4
-        #global pos1, pos2, pos3, pos4
         global jog1, jog2, jog3, jog4
 
         filename = askopenfilename(initialdir="./", title="Select file",
