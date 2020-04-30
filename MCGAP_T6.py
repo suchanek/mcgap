@@ -50,7 +50,7 @@ READERROR = -999  # returned when can't read a motor
 ATLIMIT = -888
 filemenu = 0
 limitSet = "Show"
-TEST = 1
+TEST = 0
 DBG = 1
 DBG2 = 0
 
@@ -2105,7 +2105,7 @@ class MakeTab:
 # com ports
 ports = list(serial.tools.list_ports.comports())
 
-if DBG2:
+if DBG:
     print(f">>> Ports: {ports}")
     i = 0
     for p, q, r in ports:
@@ -2117,7 +2117,9 @@ if DBG2:
             print(f">>> Found Motor {i} port {p}")
 
 # do full initialization of the objects
+#port485 = "COM14"
 port485 = "COM6"
+
 
 M1 = MotorControl(1, port485, 1000, 0, 3000, 0, 8000, 1000, 0, 8000, 1)
 M2 = MotorControl(2, port485, 100, 0, 0, 0, 1000, 1000, 0, 1000, 1)
