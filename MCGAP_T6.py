@@ -50,7 +50,7 @@ READERROR = -999  # returned when can't read a motor
 ATLIMIT = -888
 filemenu = 0
 limitSet = "Show"
-TEST = 0
+TEST = 1
 DBG = 1
 DBG2 = 0
 
@@ -1122,7 +1122,7 @@ class InputControl:
         mn = (dg - float(di)) * 60.0
         mn = int(100*mn)/100.0
         if mn - int(mn) < 0.05:
-            #ln = len(str(mn))
+            # ln = len(str(mn))
             mn = int(mn)
         if di == 0:
             st = str(abs(mn)) + "'"
@@ -1140,12 +1140,9 @@ class InputControl:
         """
         Initialize entry values to current positions.
         """
-        #import numpy as np
 
-        #motors = np.asarray([0, M1, M2, M3, M4])
         motors = [0, M1, M2, M3, M4]
         rp = motors[unit].position
-        #rp = Location[unit]
         strv = tk.StringVar()
         strv.set(rp)
         return
@@ -1471,7 +1468,6 @@ class LocalIO:
 
         :return:
         """
-        #T.updateTabLocations()
 
         filename = asksaveasfilename(initialdir="./", title="Select file",
                                      filetypes=(("config files", "*.usr"), ("all files", "*.*")))
@@ -1616,8 +1612,6 @@ class LocalIO:
         page[0].rowconfigure(3, {'minsize': 20})
         page[0].rowconfigure(8, {'minsize': 20})
         page[0].rowconfigure(10, {'minsize': 20})
-        #page[0].rowconfigure(11, {'minsize': 20})
-        #page[0].rowconfigure(13, {'minsize': 20})
         page[0].columnconfigure(0, {'minsize': 50})
         page[0].columnconfigure(2, {'minsize': 50})
         page[0].columnconfigure(4, {'minsize': 50})
