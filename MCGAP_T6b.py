@@ -42,15 +42,18 @@ ExceptionCodes = {1: 'Illegal Function', 2: 'Illegal Data Address',
                   8: 'Memory Parity Error', 10: 'Gateway Path Unavailable',
                   11: 'Gateway Target Device Failed to respond'}
 
+
+FORMAT = ('%(asctime)-15s %(threadName)-15s %(levelname)-8s %(module)-15s:%(lineno)-8s %(message)s')
 logging.basicConfig(format=FORMAT)
 log = logging.getLogger()
+log.setLevel(logging.DEBUG)
 
 # Define Global Variables
 READERROR = -999  # returned when can't read a motor
 ATLIMIT = -888
 filemenu = 0
 limitSet = "Show"
-TEST = 1
+TEST = 0
 DBG = 1
 DBG2 = 0
 
@@ -376,8 +379,8 @@ class MotorControl:
             self.available = True
             return True
 
-        mb = ModbusSerialClient()
-        self.client = ModbusSerialClient(method='rtu', port=self.port, parity='E', baudrate=9600)
+        self.client = ModbusSerialClient(method='rtu', port=self.port, parity='E', baudrate=9600, 
+                                         strict=False, stopbits=2, unit=self.unit)
         '''
         self.client = ModbusSerialClient(method='rtu', port=self.port, retries=100, timeout=0.5,
                                    rtscts=True, parity='E', baudrate=9600, strict=False, stopbits=2,
@@ -539,7 +542,8 @@ class MotorControl:
             alarm = read.registers[0]  # returned 32 with normal operation
             read = self.client.read_holding_registers(0x0081, 1, unit=self.unit)
             if read.isError():
-                print(f"!!! checkAlrm: got modbus exception: {ExceptionCodes.get(read.exception_code)}")
+                if isinstance(read, ModbusException):
+                    print(f"!!! checkAlrm: got modbus exception: {ExceptionCodes.get(read.exception_code)}")
                 return False
             else:
                 alarm = read.registers[0]
@@ -2117,13 +2121,13 @@ if DBG:
 
 # do full initialization of the objects
 #port485 = "COM14"
-port485 = "COM6"
+port485 = "COM4"
 
 
-M1 = MotorControl(1, port485, 1000, 0, 3000, 0, 8000, 1000, 0, 8000, 1)
-M2 = MotorControl(2, port485, 100, 0, 0, 0, 1000, 1000, 0, 1000, 1)
-M3 = MotorControl(3, port485, 10000, 0, 1000, 0, 125000, 100000, 0, 15000, 100)
-M4 = MotorControl(4, port485, 10000, 0, 1000, 0, 125000, 100000, 0, 15000, 100)
+M1 = MotorControl(0x01, port485, 1000, 0, 3000, 0, 8000, 1000, 0, 8000, 1)
+M2 = MotorControl(0x02, port485, 100, 0, 0, 0, 1000, 1000, 0, 1000, 1)
+M3 = MotorControl(0x03, port485, 10000, 0, 1000, 0, 125000, 100000, 0, 15000, 100)
+M4 = MotorControl(0x04, port485, 10000, 0, 1000, 0, 125000, 100000, 0, 15000, 100)
 
 if not TEST and not (M1.available or M2.available or M3.available or M4.available):
     warn()
