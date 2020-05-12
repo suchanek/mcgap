@@ -122,12 +122,12 @@ def message(unit, _mflag, msg):
     if _mflag == 1:
         if DBG2:
             print(unit, "MESSAGE:", msg, ">", page[unit], "<")
-        tk.Label(page[unit], font='Ariel 13', foreground="#000000", text=msg).place(x=100, y=10, width=350, height=25)
+        tk.Label(page[unit], font='Ariel 13', background = "#F0F0F0", foreground="#FF0000", text=msg).place(x=100, y=10, width=350, height=25)
 
     else:
         if DBG2:
             print(unit, "MESSAGE:", msg, ">", page[unit], "<")
-        tk.Label(page[unit], font='Ariel 13', foreground="#F0F0F0", text=msg).place(x=100, y=10, width=350, height=25)
+        tk.Label(page[unit], font='Ariel 13', background = "#F0F0F0",  foreground="#F0F0F0", text=msg).place(x=100, y=10, width=350, height=25)
 
 
 def warn():
