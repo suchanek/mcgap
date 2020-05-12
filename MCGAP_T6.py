@@ -93,7 +93,16 @@ def beep(repeat):
     Play a beep 'repeat' times.
     """
     while repeat:
-        play_sound('ping.wav')
+        play_sound('./sounds/ping.wav')
+        repeat -= 1
+
+
+def intro(repeat):
+    """
+    Play a beep 'repeat' times.
+    """
+    while repeat:
+        play_sound('./sounds/20thcenturyfox.wav')
         repeat -= 1
 
 
@@ -2171,6 +2180,8 @@ nb = ttk.Notebook(main)
 nb.grid(row=1, column=0, columnspan=50, rowspan=49, sticky='NESW')
 svar = tk.StringVar()
 
+
 run()
+intro(1)
 main.mainloop()
 # end program
