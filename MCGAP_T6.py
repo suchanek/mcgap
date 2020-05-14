@@ -377,16 +377,15 @@ class MotorControl:
         :return: True if success, False otherwise
         """
         res = 0
-
+ 
         if TEST:
             self.client = ModbusClient(method='rtu', baudrate=9600)
             self.connected = True
             self.available = True
             return True
 
-        self.client = ModbusClient(method='rtu', port=self.port, retries=100, timeout=0.5,
-                                   rtscts=True, parity='E', baudrate=9600, strict=False, stopbits=2,
-                                   unit=self.unit)
+        self.client = ModbusClient(method='rtu', port=self.port, rtscts=True, parity='E',
+                                   baudrate=9600, strict=False, unit=self.unit)
 
         if isinstance(self.client, ConnException):
             print(f"!!! connectMotor: Connection error for unit {self.unit}")
@@ -2120,12 +2119,11 @@ if DBG:
             print(f">>> Found Motor {i} port {p}")
 
 # do full initialization of the objects
-#port485 = "COM14"
 port485 = "COM4"
-
+port485b = "COM7"
 
 M1 = MotorControl(1, port485, 1000, 0, 3000, 0, 8000, 1000, 0, 8000, 1)
-M2 = MotorControl(2, "COM7", 100, 0, 0, 0, 1000, 1000, 0, 1000, 1)
+M2 = MotorControl(2, port485, 100, 0, 0, 0, 1000, 1000, 0, 1000, 1)
 M3 = MotorControl(3, port485, 10000, 0, 1000, 0, 125000, 100000, 0, 15000, 100)
 M4 = MotorControl(4, port485, 10000, 0, 1000, 0, 125000, 100000, 0, 15000, 100)
 
