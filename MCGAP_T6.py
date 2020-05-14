@@ -50,7 +50,7 @@ READERROR = -999  # returned when can't read a motor
 ATLIMIT = -888
 filemenu = 0
 limitSet = "Show"
-TEST = 1
+TEST = 0
 DBG = 1
 DBG2 = 0
 
@@ -2121,11 +2121,11 @@ if DBG:
 
 # do full initialization of the objects
 #port485 = "COM14"
-port485 = "COM6"
+port485 = "COM4"
 
 
 M1 = MotorControl(1, port485, 1000, 0, 3000, 0, 8000, 1000, 0, 8000, 1)
-M2 = MotorControl(2, port485, 100, 0, 0, 0, 1000, 1000, 0, 1000, 1)
+M2 = MotorControl(2, "COM7", 100, 0, 0, 0, 1000, 1000, 0, 1000, 1)
 M3 = MotorControl(3, port485, 10000, 0, 1000, 0, 125000, 100000, 0, 15000, 100)
 M4 = MotorControl(4, port485, 10000, 0, 1000, 0, 125000, 100000, 0, 15000, 100)
 
@@ -2182,6 +2182,6 @@ svar = tk.StringVar()
 
 
 run()
-intro(1)
+#intro(1)
 main.mainloop()
 # end program

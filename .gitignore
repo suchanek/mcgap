@@ -2,10 +2,6 @@
 .DS_Store
 *~
 .vs/*
-<<<<<<< HEAD
-.venv/*
-=======
 venv/*
->>>>>>> 425cf57b1f575bf53b7df6a3759cef1159c55ae9
 mcgap/*
 
