@@ -27,7 +27,7 @@ import serial.tools.list_ports
 
 import simpleaudio as sa
 # import pymodbus.exceptions
-from pymodbus.client.sync import ModbusSerialClient as ModbusClient
+from pymodbus.client.sync import ModbusSerialClient, ModbusSerialClient
 from pymodbus.exceptions import ModbusIOException as ModbusException
 from pymodbus.exceptions import ConnectionException as ConnException
 
@@ -42,15 +42,18 @@ ExceptionCodes = {1: 'Illegal Function', 2: 'Illegal Data Address',
                   8: 'Memory Parity Error', 10: 'Gateway Path Unavailable',
                   11: 'Gateway Target Device Failed to respond'}
 
+
+FORMAT = ('%(asctime)-15s %(threadName)-15s %(levelname)-8s %(module)-15s:%(lineno)-8s %(message)s')
 logging.basicConfig(format=FORMAT)
 log = logging.getLogger()
+log.setLevel(logging.DEBUG)
 
 # Define Global Variables
 READERROR = -999  # returned when can't read a motor
 ATLIMIT = -888
 filemenu = 0
 limitSet = "Show"
-TEST = 0
+TEST = 1
 DBG = 1
 DBG2 = 0
 
@@ -93,9 +96,8 @@ def beep(repeat):
     Play a beep 'repeat' times.
     """
     while repeat:
-        play_sound('./sounds/ping.wav')
+        play_sound('ping.wav')
         repeat -= 1
-
 
 def intro(repeat):
     """
@@ -131,12 +133,12 @@ def message(unit, _mflag, msg):
     if _mflag == 1:
         if DBG2:
             print(unit, "MESSAGE:", msg, ">", page[unit], "<")
-        tk.Label(page[unit], font='Ariel 13', foreground="#000000", text=msg).place(x=100, y=10, width=350, height=25)
+        tk.Label(page[unit], font='Ariel 13', background = "#F0F0F0", foreground="#FF0000", text=msg).place(x=100, y=10, width=350, height=25)
 
     else:
         if DBG2:
             print(unit, "MESSAGE:", msg, ">", page[unit], "<")
-        tk.Label(page[unit], font='Ariel 13', foreground="#F0F0F0", text=msg).place(x=100, y=10, width=350, height=25)
+        tk.Label(page[unit], font='Ariel 13', background = "#F0F0F0",  foreground="#F0F0F0", text=msg).place(x=100, y=10, width=350, height=25)
 
 
 def warn():
@@ -325,6 +327,7 @@ class MotorControl:
         else:
             lim1 = read.registers[0]
 
+
         read = self.client.read_holding_registers(0x400F, 1, unit=self.unit)
         if read.isError():
             print("!!! checkLimits: got modbus exception: ", ExceptionCodes.get(read.exception_code))
@@ -377,15 +380,20 @@ class MotorControl:
         :return: True if success, False otherwise
         """
         res = 0
- 
+
         if TEST:
-            self.client = ModbusClient(method='rtu', baudrate=9600)
+            self.client = ModbusSerialClient(method='rtu', baudrate=9600, parity='E')
             self.connected = True
             self.available = True
             return True
 
-        self.client = ModbusClient(method='rtu', port=self.port, rtscts=True, parity='E',
-                                   baudrate=9600, strict=False, unit=self.unit)
+        self.client = ModbusSerialClient(method='rtu', port=self.port, parity='E', baudrate=9600, 
+                                         strict=False, stopbits=2, unit=self.unit)
+        '''
+        self.client = ModbusSerialClient(method='rtu', port=self.port, retries=100, timeout=0.5,
+                                   rtscts=True, parity='E', baudrate=9600, strict=False, stopbits=2,
+                                   unit=self.unit)
+        '''
 
         if isinstance(self.client, ConnException):
             print(f"!!! connectMotor: Connection error for unit {self.unit}")
@@ -542,7 +550,8 @@ class MotorControl:
             alarm = read.registers[0]  # returned 32 with normal operation
             read = self.client.read_holding_registers(0x0081, 1, unit=self.unit)
             if read.isError():
-                print(f"!!! checkAlrm: got modbus exception: {ExceptionCodes.get(read.exception_code)}")
+                if isinstance(read, ModbusException):
+                    print(f"!!! checkAlrm: got modbus exception: {ExceptionCodes.get(read.exception_code)}")
                 return False
             else:
                 alarm = read.registers[0]
@@ -2119,13 +2128,14 @@ if DBG:
             print(f">>> Found Motor {i} port {p}")
 
 # do full initialization of the objects
+#port485 = "COM14"
 port485 = "COM4"
-port485b = "COM7"
 
-M1 = MotorControl(1, port485, 1000, 0, 3000, 0, 8000, 1000, 0, 8000, 1)
-M2 = MotorControl(2, port485, 100, 0, 0, 0, 1000, 1000, 0, 1000, 1)
-M3 = MotorControl(3, port485, 10000, 0, 1000, 0, 125000, 100000, 0, 15000, 100)
-M4 = MotorControl(4, port485, 10000, 0, 1000, 0, 125000, 100000, 0, 15000, 100)
+
+M1 = MotorControl(0x01, port485, 1000, 0, 3000, 0, 8000, 1000, 0, 8000, 1)
+M2 = MotorControl(0x02, port485, 100, 0, 0, 0, 1000, 1000, 0, 1000, 1)
+M3 = MotorControl(0x03, port485, 10000, 0, 1000, 0, 125000, 100000, 0, 15000, 100)
+M4 = MotorControl(0x04, port485, 10000, 0, 1000, 0, 125000, 100000, 0, 15000, 100)
 
 if not TEST and not (M1.available or M2.available or M3.available or M4.available):
     warn()
@@ -2178,8 +2188,7 @@ nb = ttk.Notebook(main)
 nb.grid(row=1, column=0, columnspan=50, rowspan=49, sticky='NESW')
 svar = tk.StringVar()
 
-
+intro(1)
 run()
-#intro(1)
 main.mainloop()
 # end program

@@ -36,7 +36,7 @@ FORMAT = ('%(asctime)-15s %(threadName)-15s '
 
 # http://www.simplymodbus.ca/exceptions.htm
 ExceptionCodes = {1: 'Illegal Function', 2: 'Illegal Data Address',
-                  3: 'Illegal Data Value', 4: 'Slave Device Failure', 
+                  3: 'Illegal Data Value', 4: 'Slave Device Failure',
                   5: 'Acknowledge',
                   6: 'Slave Device Busy', 7: 'Negative Acknowlege',
                   8: 'Memory Parity Error', 10: 'Gateway Path Unavailable',
@@ -93,16 +93,7 @@ def beep(repeat):
     Play a beep 'repeat' times.
     """
     while repeat:
-        play_sound('./sounds/ping.wav')
-        repeat -= 1
-
-
-def intro(repeat):
-    """
-    Play a beep 'repeat' times.
-    """
-    while repeat:
-        play_sound('./sounds/20thcenturyfox.wav')
+        play_sound('ping.wav')
         repeat -= 1
 
 
@@ -377,15 +368,16 @@ class MotorControl:
         :return: True if success, False otherwise
         """
         res = 0
- 
+
         if TEST:
             self.client = ModbusClient(method='rtu', baudrate=9600)
             self.connected = True
             self.available = True
             return True
 
-        self.client = ModbusClient(method='rtu', port=self.port, rtscts=True, parity='E',
-                                   baudrate=9600, strict=False, unit=self.unit)
+        self.client = ModbusClient(method='rtu', port=self.port, retries=100, timeout=0.5,
+                                   rtscts=True, parity='E', baudrate=9600, strict=False, stopbits=2,
+                                   unit=self.unit)
 
         if isinstance(self.client, ConnException):
             print(f"!!! connectMotor: Connection error for unit {self.unit}")
@@ -538,14 +530,14 @@ class MotorControl:
         if read.isError():
             print(f"!!! checkAlrm: got modbus exception: {read.message}")
             return READERROR
+
+        alarm = read.registers[0]  # returned 32 with normal operation
+        read = self.client.read_holding_registers(0x0081, 1, unit=self.unit)
+        if read.isError():
+            print(f"!!! checkAlrm: got modbus exception: {ExceptionCodes.get(read.exception_code)}")
+            return False
         else:
-            alarm = read.registers[0]  # returned 32 with normal operation
-            read = self.client.read_holding_registers(0x0081, 1, unit=self.unit)
-            if read.isError():
-                print(f"!!! checkAlrm: got modbus exception: {ExceptionCodes.get(read.exception_code)}")
-                return False
-            else:
-                alarm = read.registers[0]
+            alarm = read.registers[0]
 
         if TEST:
             alarm = 64
@@ -1130,7 +1122,7 @@ class InputControl:
         mn = (dg - float(di)) * 60.0
         mn = int(100*mn)/100.0
         if mn - int(mn) < 0.05:
-            # ln = len(str(mn))
+            #ln = len(str(mn))
             mn = int(mn)
         if di == 0:
             st = str(abs(mn)) + "'"
@@ -1148,9 +1140,12 @@ class InputControl:
         """
         Initialize entry values to current positions.
         """
+        #import numpy as np
 
+        #motors = np.asarray([0, M1, M2, M3, M4])
         motors = [0, M1, M2, M3, M4]
         rp = motors[unit].position
+        #rp = Location[unit]
         strv = tk.StringVar()
         strv.set(rp)
         return
@@ -1476,6 +1471,7 @@ class LocalIO:
 
         :return:
         """
+        #T.updateTabLocations()
 
         filename = asksaveasfilename(initialdir="./", title="Select file",
                                      filetypes=(("config files", "*.usr"), ("all files", "*.*")))
@@ -1620,6 +1616,8 @@ class LocalIO:
         page[0].rowconfigure(3, {'minsize': 20})
         page[0].rowconfigure(8, {'minsize': 20})
         page[0].rowconfigure(10, {'minsize': 20})
+        #page[0].rowconfigure(11, {'minsize': 20})
+        #page[0].rowconfigure(13, {'minsize': 20})
         page[0].columnconfigure(0, {'minsize': 50})
         page[0].columnconfigure(2, {'minsize': 50})
         page[0].columnconfigure(4, {'minsize': 50})
@@ -2119,8 +2117,9 @@ if DBG:
             print(f">>> Found Motor {i} port {p}")
 
 # do full initialization of the objects
-port485 = "COM4"
-port485b = "COM7"
+#port485 = "COM14"
+port485 = "COM6"
+
 
 M1 = MotorControl(1, port485, 1000, 0, 3000, 0, 8000, 1000, 0, 8000, 1)
 M2 = MotorControl(2, port485, 100, 0, 0, 0, 1000, 1000, 0, 1000, 1)
@@ -2178,8 +2177,6 @@ nb = ttk.Notebook(main)
 nb.grid(row=1, column=0, columnspan=50, rowspan=49, sticky='NESW')
 svar = tk.StringVar()
 
-
 run()
-#intro(1)
 main.mainloop()
 # end program
