@@ -50,7 +50,7 @@ READERROR = -999  # returned when can't read a motor
 ATLIMIT = -888
 filemenu = 0
 limitSet = "Show"
-TEST = 0
+TEST = 1
 DBG = 1
 DBG2 = 0
 
