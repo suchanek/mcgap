@@ -1,6 +1,7 @@
 {
-    "python.pythonPath": "/Users/suchanek/anaconda3/envs/mcgap/bin/python",
+    "python.pythonPath": "venv\\Scripts\\python.exe",
     "python.linting.enabled": true,
-    "python.linting.pylintEnabled": false,
-    "python.linting.banditEnabled": true
+    "python.linting.pylintEnabled": true,
+    "python.linting.banditEnabled": false,
+    "python.linting.pycodestyleEnabled": false
 }
