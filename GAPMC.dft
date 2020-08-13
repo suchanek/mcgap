@@ -2,11 +2,11 @@
 # tab 	key 	value 	label
 #1	tab	100	Slide
 1	mech	1000	Mechelle
-1	wide	3000	Wide Field
-1	slit	4000	Slit Jaw
-1	eye	6000	Eyepiece
-1	ccd	7000	CCD Camera
-1	comp	8000	Comparisons
+1	wide	20000	Wide Field
+1	slit	298769  Slit Eyepiece
+1	eye	300000	Eyepiece
+1	ccd	420405	Slit TV
+1	comp	524000  Comparison
 1	jog	-1	-1
 1	jog	-5	-5
 1	jog	-20	-20
