@@ -36,7 +36,7 @@ FORMAT = ('%(asctime)-15s %(threadName)-15s '
 
 # http://www.simplymodbus.ca/exceptions.htm
 ExceptionCodes = {1: 'Illegal Function', 2: 'Illegal Data Address',
-                  3: 'Illegal Data Value', 4: 'Slave Device Failure', 
+                  3: 'Illegal Data Value', 4: 'Slave Device Failure',
                   5: 'Acknowledge',
                   6: 'Slave Device Busy', 7: 'Negative Acknowlege',
                   8: 'Memory Parity Error', 10: 'Gateway Path Unavailable',
@@ -50,7 +50,7 @@ READERROR = -999  # returned when can't read a motor
 ATLIMIT = -888
 filemenu = 0
 limitSet = "Show"
-TEST = 1
+TEST = 0
 DBG = 1
 DBG2 = 0
 
@@ -377,7 +377,7 @@ class MotorControl:
         :return: True if success, False otherwise
         """
         res = 0
- 
+
         if TEST:
             self.client = ModbusClient(method='rtu', baudrate=9600)
             self.connected = True
@@ -1783,34 +1783,6 @@ class TabControl:
 
         return closest
 
-    def chkClosest(self, unit, position, tablist):
-        """
-        Checks for a position offset of the motor for the closesst RadioButton.
-
-        :param unit: motor index number
-        :param tablist: contents array for the selected tablet
-        :param page: associated page number for the tablist
-        :return: none
-        """
-        if unit > 2:
-            return
-        
-        nearest = list_of_numbers[closest]
-        difference = position - nearest
-
-        name = tablist[closest][3] 
-        if len(tablist[closest]) == 5:
-            name += " " + tablist[closest][4]
-
-        msg = "Motor " + str(unit) +  " is off " + str(difference) + " steps from "  + name   
-        if abs(difference) > 0:
-            message(unit, 1, msg)
-        else:
-            message(unit, 0, msg)
-        
-        if abs(difference) > 0:
-            message = "Notice: Motor is off " + str(difference) + " steps. Click selection."
-
     def resetTab(self):
         """
         Reset settings to the llast file opened.
@@ -2147,10 +2119,10 @@ if DBG:
             print(f">>> Found Motor {i} port {p}")
 
 # do full initialization of the objects
+port485 = "COM19"
 port485 = "COM4"
-port485b = "COM7"
 
-M1 = MotorControl(1, port485, 1000, 0, 3000, 0, 8000, 1000, 0, 8000, 1)
+M1 = MotorControl(1, port485, 10000, 0, 3000, 0, 8000, 1000, 0, 8000, 1)
 M2 = MotorControl(2, port485, 100, 0, 0, 0, 1000, 1000, 0, 1000, 1)
 M3 = MotorControl(3, port485, 10000, 0, 1000, 0, 125000, 100000, 0, 15000, 100)
 M4 = MotorControl(4, port485, 10000, 0, 1000, 0, 125000, 100000, 0, 15000, 100)

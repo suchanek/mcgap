@@ -21,6 +21,8 @@ import pathlib
 import logging
 import copy
 from time import sleep
+import time
+import pynput
 
 import serial
 import serial.tools.list_ports
@@ -50,7 +52,7 @@ READERROR = -999  # returned when can't read a motor
 ATLIMIT = -888
 filemenu = 0
 limitSet = "Show"
-TEST = 1
+TEST = 0
 DBG = 1
 DBG2 = 0
 
@@ -77,6 +79,14 @@ DFLT_FILENAME = "GAPMC.dft"
 DFLT_PATH = PATH.joinpath(DFLT_FILENAME)
 DFLT_POSIX = DFLT_PATH.as_posix()
 
+
+def clicks(event):
+    t = time.time()
+    if t - event._click_time < 0.25:
+        event._click_count += 1
+    else:
+        event._click_count = 1
+        event._click_time = time.time()
 
 def play_sound(sound_file):
     """
@@ -290,6 +300,7 @@ class MotorControl:
         self.connected = False
         self.available = self.isAvailable()
         self.resolution = self.getGearing(gearBox)
+        self.done = 1
 
     def isAvailable(self):
         """
@@ -384,7 +395,7 @@ class MotorControl:
             self.available = True
             return True
 
-        self.client = ModbusClient(method='rtu', port=self.port, rtscts=True, parity='E',
+        self.client = ModbusClient(method='rtu', port=self.port, rtscts=True, parity='E', stopbits=1,
                                    baudrate=9600, strict=False, unit=self.unit)
 
         if isinstance(self.client, ConnException):
@@ -457,11 +468,17 @@ class MotorControl:
             T.setTmpArr(self.unit, self.position)
             return self.position
 
+        clicks(self.done)
+        print("CLICKS " + str(_click_count))
+
+        if self.done == 0:
+            return
+
         cp = self.readMotor()
         if cp == READERROR:
             print(f"!!! jogMotor: can't get unit {self.unit} motor position")
             return READERROR
-
+      
         jogPosition = int(delta) + cp
 
         self.sendMotor(jogPosition)
@@ -683,6 +700,7 @@ class MotorControl:
                 return ATLIMIT
             reps += 1
             if rp == self.target:
+                self.done = 1
                 break
         # end while
 
@@ -824,6 +842,7 @@ class MotorControl:
             print("!!! sendMotor: SEND IS OUT OF RANGE. RETURN")
             return READERROR
 
+        self.done = 0
         # get the desired target position
         setPosition = int(self.target)
 
@@ -1783,34 +1802,6 @@ class TabControl:
 
         return closest
 
-    def chkClosest(self, unit, position, tablist):
-        """
-        Checks for a position offset of the motor for the closesst RadioButton.
-
-        :param unit: motor index number
-        :param tablist: contents array for the selected tablet
-        :param page: associated page number for the tablist
-        :return: none
-        """
-        if unit > 2:
-            return
-        
-        nearest = list_of_numbers[closest]
-        difference = position - nearest
-
-        name = tablist[closest][3] 
-        if len(tablist[closest]) == 5:
-            name += " " + tablist[closest][4]
-
-        msg = "Motor " + str(unit) +  " is off " + str(difference) + " steps from "  + name   
-        if abs(difference) > 0:
-            message(unit, 1, msg)
-        else:
-            message(unit, 0, msg)
-        
-        if abs(difference) > 0:
-            message = "Notice: Motor is off " + str(difference) + " steps. Click selection."
-
     def resetTab(self):
         """
         Reset settings to the llast file opened.
@@ -2007,12 +1998,14 @@ class MakeTab:
 
         jogN = len(jog3)
         jogR = jogN * 20
-        jogS = 110 - jogR / 4
+        jogS = 120 - jogR / 4
 
         tk.Label(page[3], font='Ariel 13', text="Grating 1 angle is").place(x=30, y=50, width=150, height=25)
         tk.Label(page[3], font='Ariel 13', text="Current location").place(x=30, y=100, width=150, height=25)
         tk.Label(page[3], font='Ariel 13', text="Enter new location").place(x=30, y=150, width=150, height=25)
-        tk.Label(page[3], font='Ariel 13', text="Jog").place(x=350, y=jogS, width=150, height=25)
+        tk.Label(page[3], font='Ariel 13', text="Jog").place(x=350, y=jogS-20, width=150, height=25)
+        tk.Label(page[3], font='Ariel 9', text="CW").place(x=380, y=jogS+5, width=50, height=25)
+        tk.Label(page[3], font='Ariel 9', text="CCW").place(x=428, y=jogS+5, width=50, height=25)
         tk.Label(page[3], font=10, text=steps + " steps per " + degree + u"\u00b0").place(x=30, y=200, width=150, height=25)
         #tk.Label(page[3], font=10, text=msg).place(x=30, y=200, width=150, height=25)
 
@@ -2061,12 +2054,14 @@ class MakeTab:
 
         jogN = len(jog4)
         jogR = jogN * 20
-        jogS = 110 - jogR / 4
+        jogS = 120 - jogR / 4
 
         tk.Label(page[4], font='Ariel 13', text="Grating 2 angle is").place(x=30, y=50, width=150, height=25)
         tk.Label(page[4], font='Ariel 13', text="Current location").place(x=30, y=100, width=150, height=25)
         tk.Label(page[4], font='Ariel 13', text="Enter new location").place(x=30, y=150, width=150, height=25)
-        tk.Label(page[4], font='Ariel 13', text="Jog").place(x=350, y=jogS, width=150, height=25)
+        tk.Label(page[4], font='Ariel 13', text="Jog").place(x=350, y=jogS-20, width=150, height=25)
+        tk.Label(page[4], font='Ariel 9', text="CW").place(x=380, y=jogS+5, width=50, height=25)
+        tk.Label(page[4], font='Ariel 9', text="CCW").place(x=428, y=jogS+5, width=50, height=25)
         tk.Label(page[4], font=10, text=steps + " steps per " + degree + u"\u00b0").place(x=30, y=200, width=150, height=25)
 
         row = 0

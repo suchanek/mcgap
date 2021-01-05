@@ -1,35 +1,30 @@
 """
 Motor control application for MIRA.
 """
+import copy
+import logging
+import os.path as path
+import pathlib
 #
 # Motor Control Software for the MIRA gap.
 # Author: Gary Love, with help from Eric Suchanek
 #
 import sys
-import os.path as path
-
 import tkinter as tk
-from tkinter import *
-from tkinter.filedialog import askopenfilename
-from tkinter.filedialog import asksaveasfilename
 import tkinter.font as tkFont
-from tkinter import ttk
-
 from functools import partial
-
-import pathlib
-import logging
-import copy
 from time import sleep
+from tkinter import *
+from tkinter import ttk
+from tkinter.filedialog import askopenfilename, asksaveasfilename
 
 import serial
 import serial.tools.list_ports
-
 import simpleaudio as sa
 # import pymodbus.exceptions
 from pymodbus.client.sync import ModbusSerialClient as ModbusClient
-from pymodbus.exceptions import ModbusIOException as ModbusException
 from pymodbus.exceptions import ConnectionException as ConnException
+from pymodbus.exceptions import ModbusIOException as ModbusException
 
 FORMAT = ('%(asctime)-15s %(threadName)-15s '
           '%(levelname)-8s %(module)-15s:%(lineno)-8s %(message)s')
@@ -47,12 +42,14 @@ log = logging.getLogger()
 
 # Define Global Variables
 READERROR = -999  # returned when can't read a motor
+SETERROR = 1
 ATLIMIT = -888
 filemenu = 0
+user_menus = "disabled"
 limitSet = "Show"
-TEST = 1
+TEST = 0
 DBG = 1
-DBG2 = 0
+DBG2 = 1
 
 # Initialize arrays
 e = [0, 0, 0, 0, 0, 0, 0, 0]
@@ -61,11 +58,11 @@ o = [0, 0, 0, 0, 0]
 s = [0, 0, 0, 0, 0]
 u = [0, 0, 0, 0, 0]
 z = [0, 0, 0, 0, 0]
+d = [0, 0, 0, 0, 0]
 
 jog1 = jog2 = jog3 = jog4 = []
-tab1 = tab2 = tab3 = tab4 = []
-tmp1 = tmp2 = tmp3 = tmp4 = []
-pos1 = pos2 = pos3 = pos4 = []
+tab1 = tab2 = tab3 = tab4 = [] # array of active positions displayed on the four tabs
+tmp1 = tmp2 = tmp3 = tmp4 = [] # array of temporary positions when user makes an adjustement
 page = ["page[0]", "page[1]", "page[2]", "page[3]", "page[4]"]
 
 PATH = pathlib.Path(__file__).parent.joinpath("").resolve()
@@ -110,11 +107,15 @@ def menu():
     """
     Create a pulldown file menu, and add it to the menu bar
     """
-    global filemenu
+    global filemenu, user_menus
+
+    if DBG2:
+        print("USER MENUS " + user_menus)
 
     filemenu = tk.Menu(menubar, tearoff=0)
-    filemenu.add_command(label="Open User Settings", font='Ariel 13', command=F.readUser)
-    filemenu.add_command(label="Save User Settings", font='Ariel 13', command=F.saveUser)
+    if user_menus == "enable":
+        filemenu.add_command(label="Open User Settings", font='Ariel 13', command=F.readUser)
+        filemenu.add_command(label="Save User Settings", font='Ariel 13', command=F.saveUser)
     filemenu.add_command(label="Reset to Orig Defaults", font='Ariel 13', command=F.readDflt)
     filemenu.add_command(label="Configure Motors", font='Ariel 13', command=F.getPassword)
     filemenu.add_separator()
@@ -184,8 +185,13 @@ def run():
             message(M1.unit, 1, msg)
         else:
             I.setEntry(1, p1)
+            T.setLabel(1, p1)
             slidePos = T.getRadioButn(1)
-            slide.set(slidePos)
+            #print("RUN SLIDE ",slidePos," DIFF ",M1.diff)
+            if M1.diff == 0:
+                slide.set(slidePos)
+            else:
+                slide.set(20)
     else:
         page[1] = ttk.Frame(nb)
         msg = f"Motor {M1.unit} is not available"
@@ -202,8 +208,13 @@ def run():
             message(M2.unit, 1, msg)
         else:
             I.setEntry(2, p2)
-            cmparPos = T.getRadioButn(2)
-            source.set(cmparPos)
+            T.setLabel(2, p2)
+            cmparPos = T.getRadioButn(2)   
+            #print("MOTOR START ",M2.strt)         
+            if M2.diff == 0:
+                source.set(cmparPos)
+            else:
+                source.set(20)
     else:
         page[2] = ttk.Frame(nb)
         msg = f"Motor {M2.unit} is not available"
@@ -220,6 +231,7 @@ def run():
             message(M3.unit, 1, msg)
         else:
             I.setEntry(3, p3)
+            T.setLabel(3, p3)
             grat1Pos = T.getRadioButn(3)
             grate1.set(grat1Pos)
     else:
@@ -238,6 +250,7 @@ def run():
             message(M4.unit, 1, msg)
         else:
             I.setEntry(4, p4)
+            T.setLabel(4, p4)
             grat2Pos = T.getRadioButn(4)
             grate2.set(grat2Pos)
     else:
@@ -253,12 +266,28 @@ def updateTabs():
     """
     global page
 
-    nb.forget(page[1])
-    nb.forget(page[2])
-    nb.forget(page[3])
-    nb.forget(page[4])
+    try:
+        nb.forget(page[1])
+    except:
+        print("Page[1] does not exist")
+    try:
+        nb.forget(page[2])
+    except:
+        print("Page[2] does not exist")
+    try:
+        nb.forget(page[3])
+    except:
+        print("Page[3] does not exist")
+    try:
+        nb.forget(page[4])
+    except:
+        print("Page[4] does not exist")
     page = ["page[0]", "page[1]", "page[2]", "page[3]", "page[4]"]
     # this is very dangerous since recursive call to run... -egs-
+    M1.diff = 1
+    M2.diff = 1
+    M1.strt = 0
+    M2.strt = 0
     run()
     return
 
@@ -290,6 +319,10 @@ class MotorControl:
         self.connected = False
         self.available = self.isAvailable()
         self.resolution = self.getGearing(gearBox)
+        self.done = 1
+        self.redo = 0
+        self.diff = 1
+        self.strt = 0
 
     def isAvailable(self):
         """
@@ -384,7 +417,7 @@ class MotorControl:
             self.available = True
             return True
 
-        self.client = ModbusClient(method='rtu', port=self.port, rtscts=True, parity='E',
+        self.client = ModbusClient(method='rtu', port=self.port, rtscts=True, parity='E', stopbits=1,
                                    baudrate=9600, strict=False, unit=self.unit)
 
         if isinstance(self.client, ConnException):
@@ -404,7 +437,9 @@ class MotorControl:
 
         res = self.client.connect()
         if res:
+            print(f">>> connectMotor: Connected to unit {self.unit}")
             self.connected = True
+            self.rstAlarm
         else:
             self.connected = False
             self.available = False
@@ -412,7 +447,9 @@ class MotorControl:
             return False
 
         # try to read a register. if we can't, then we're really not connected
+        alarm = self.checkAlarm()
         read = self.client.read_holding_registers(0x007F, 1, unit=self.unit)
+        alarm = self.checkAlarm()
         if read.isError():
             print(f"!!! connectMotor: Unit {self.unit} got modbus error: {read.message}")
             self.connected = False
@@ -425,6 +462,7 @@ class MotorControl:
                 self.connected = False
                 self.available = False
                 print(f"!!! connectMotor: unit {self.unit} has an alarm: {alarm}")
+                self.showAlarm(alarm)
                 return False
 
             if DBG2:
@@ -440,7 +478,7 @@ class MotorControl:
         :param: delta correction for new motor position
         :return: new position, or READERROR otherwise
         """
-        global tk
+        global tk, delay
         cp = READERROR
 
         if DBG:
@@ -457,11 +495,16 @@ class MotorControl:
             T.setTmpArr(self.unit, self.position)
             return self.position
 
+        if self.done == 0:
+            d[self.redo] = delta
+            self.redo += 1
+            return
+
         cp = self.readMotor()
         if cp == READERROR:
             print(f"!!! jogMotor: can't get unit {self.unit} motor position")
             return READERROR
-
+      
         jogPosition = int(delta) + cp
 
         self.sendMotor(jogPosition)
@@ -473,16 +516,28 @@ class MotorControl:
 
         if self.unit == 1:
             slidePos = T.getRadioButn(1)
-            slide.set(slidePos)
+            #print("JOG SLIDE ",jogPosition," DIFF ",M1.diff)
+            if self.diff == 0:
+                slide.set(slidePos)
+            else:
+                slide.set(20)
         if self.unit == 2:
             cmparPos = T.getRadioButn(2)
-            source.set(cmparPos)
+            if self.diff == 0:
+                source.set(cmparPos)
+            else:
+                source.set(20)           
         if self.unit == 3:
             grat1Pos = T.getRadioButn(3)
             grate1.set(grat1Pos)
         if self.unit == 4:
             grat2Pos = T.getRadioButn(4)
             grate2.set(grat2Pos)
+
+        if self.strt == 0:
+            self.setLimits()
+            rp = self.target
+            self.strt = 1
 
         I.setEntry(self.unit, rp)
         T.setLabel(self.unit, rp)
@@ -494,6 +549,11 @@ class MotorControl:
             if DBG:
                 print(f"??? jogMotor jogPos {jogPosition}, rp: {rp}")
             return READERROR
+
+        #print("REDO " + str(self.redo))
+        if self.redo > 0:
+            self.redo -= 1
+            self.jogMotor(d[self.redo])
 
         # all ok, return position
         return rp
@@ -536,23 +596,24 @@ class MotorControl:
 
         read = self.client.read_holding_registers(0x007F, 1, unit=self.unit)
         if read.isError():
-            print(f"!!! checkAlrm: got modbus exception: {read.message}")
+            print(f"!!! checkAlarm: got modbus exception: {read.message}")
             return READERROR
         else:
             alarm = read.registers[0]  # returned 32 with normal operation
             read = self.client.read_holding_registers(0x0081, 1, unit=self.unit)
             if read.isError():
-                print(f"!!! checkAlrm: got modbus exception: {ExceptionCodes.get(read.exception_code)}")
+                print("!!! checkAlarm: got modbus exception: ", ExceptionCodes.get(read.exception_code))
                 return False
             else:
                 alarm = read.registers[0]
+                print("!!! checkAlarm: got OrientalMotor exception: ", alarm)
 
         if TEST:
             alarm = 64
         return alarm
 
     # gary i don't think this actually resets the alarm -egs-
-    def rstAlrm(self):
+    def rstAlarm(self):
         """
         Reset the alarm for the object.
         :return: True if reset, False if unable to reset, or READERROR otherwise.
@@ -566,15 +627,24 @@ class MotorControl:
         if TEST:
             return True
 
+        if self.available:
         # you can only write registers if the motor is available.
-        self.client.write_register(0x7D, 0x80, unit=self.unit)
-        self.client.write_register(0x7D, 0x0, unit=self.unit)
+            self.client.write_register(0x7D, 0x80, unit=self.unit)
+            self.client.write_register(0x7D, 0x0, unit=self.unit)
+            self.client.write_register(0x181, 0x0, unit=self.unit)
+        else:
+            #self.connectMotor()
+            #self.client.write_register(0x7D, 0x80, unit=self.unit)
+            #self.client.write_register(0x7D, 0x0, unit=self.unit)
+            #self.client.write_register(0x181, 0x0, unit=self.unit)
+            exit()
         return True
 
     def showAlarm(self, error):
         """
         Displays the current alarm in a window.
         """
+        print("HERE showAlarm")
         warn2 = f"Motor {self.unit} has an alarm: {error}"
 
         # NEED A DICTIONARY FOR NESSAGES
@@ -590,17 +660,23 @@ class MotorControl:
         w.create_text(170, 95, text="", font='Ariel 13')
 
         _positionRight = int(temp.winfo_screenwidth()/2 - temp.winfo_reqwidth()/1)
-        _positionDown = int(temp.winfo_screenheight()/2 - temp.winfo_reqheight()/2)
+        _positionDown = int(temp.winfo_screenheight()/2 - temp.winfo_reqheight()/2 - 150)
 
         temp.geometry(f"+{_positionRight}+{_positionDown}")
 
-        b = tk.Button(w, text='Reset', font='Ariel 13', width=30, command=self.rstAlrm, anchor=S)
-        b2 = tk.Button(w, text='Okay', font='Ariel 13', width=30, command=temp.destroy, anchor=S)
-        b.configure(width=10, activebackground="#BBBBBB")
-        b2.configure(width=10, activebackground="#BBBBBB")
-        b.place(x=20, y=100)
-        b2.place(x=180, y=100)
-        beep(1)
+        butn = 2
+        if butn == 1:
+            b = tk.Button(w, text='Reset', font='Ariel 12', width=30, command=self.rstAlarm, anchor=S)
+            b.configure(width=10, activebackground="#BBBBBB")
+            b.place(x=120, y=100)
+        else:
+            b = tk.Button(w, text='Reset', font='Ariel 12', width=30, command=self.rstAlarm, anchor=S)
+            b.configure(width=10, activebackground="#BBBBBB")
+            b.place(x=60, y=100)
+            b2 = tk.Button(w, text='Done', font='Ariel 12', width=30, command=temp.destroy, anchor=S)
+            b2.configure(width=10, activebackground="#BBBBBB")
+            b2.place(x=180, y=100)
+        #beep(1)
         temp.mainloop()
         temp.destroy
         return
@@ -616,7 +692,7 @@ class MotorControl:
         :return: motor position in user steps, READERROR if error
         """
 
-        global tk
+        global tk, delay
         reps = 0
         atlimit = 0
 
@@ -672,7 +748,8 @@ class MotorControl:
             T.setTmpArr(self.unit, rp)
 
             main.config(cursor="")
-            print(f">>> readDelay: current pos is {rp}, target is {target}")
+            if DBG:
+                print(f">>> readDelay: current pos is {rp}, target is {target}")
 
             atlimit = self.checkLimits()
             if atlimit == READERROR:
@@ -683,6 +760,7 @@ class MotorControl:
                 return ATLIMIT
             reps += 1
             if rp == self.target:
+                self.done = 1
                 break
         # end while
 
@@ -727,8 +805,11 @@ class MotorControl:
 
         self.position = position
 
-        T.setLabel(self.unit, self.position)
-        T.setTmpArr(self.unit, self.position)
+        if self.strt == 1:
+            T.setLabel(self.unit, self.position)
+            T.setTmpArr(self.unit, self.position)
+        else:
+            self.setLimits()
 
         self.closeMotor()
         return self.position
@@ -824,8 +905,11 @@ class MotorControl:
             print("!!! sendMotor: SEND IS OUT OF RANGE. RETURN")
             return READERROR
 
+        self.done = 0
         # get the desired target position
         setPosition = int(self.target)
+
+        T.setRadiobutton(self.unit, setPosition)
 
         highPosition = int(setPosition / 65536)
         lowPosition = setPosition % 65536
@@ -883,6 +967,11 @@ class MotorControl:
             return READERROR
 
         self.closeMotor()
+
+        if self.strt == 0:
+            rp = self.target
+            self.strt = 1
+            self.setLimits()
 
         I.setEntry(self.unit, rp)
         T.setLabel(self.unit, rp)
@@ -971,6 +1060,9 @@ class MotorControl:
         if DBG:
             print(f">>> setMotor: Unit {self.unit}, to {location}")
 
+        if self.done == 0:
+            return
+
         res = self.sendMotor(location)
 
         if res == READERROR:
@@ -994,6 +1086,56 @@ class MotorControl:
             self.client.write_register(0x251, 0x0, unit=self.unit)
             beep(2)
         return
+
+    def setLimits(self):
+        """
+        Set the software limits for the object.
+        :return: True if reset, False if unable to reset, or SETERROR otherwise.
+        Assumes the motor is connected and available.
+        """
+        global TEST
+
+        return
+
+        if isinstance(self.client, ModbusException):
+            print("HERE")
+            return False
+
+        if TEST:
+            print("THERE")
+            return True
+
+        # Hard upper limit = soft upper limit + 1 
+        upper = self.upper + 1
+        # Hard lower limit = soft lower limit - 1
+        lower = self.lower - 1
+        highUpperLimit = int(upper / 65536)
+        lowUpperLimit = upper % 65536 
+        highLowerLimit = int(lower / 65536)
+        if lower < 0:
+            lowLowerLimit = lower % 65536
+        else:        
+            lowLowerLimit = lower % 65536 
+        #lowLowerLimit = int(10)
+
+        print("UNIT ",self.unit," Hard Upper ",self.upper,highUpperLimit,lowUpperLimit," Hard Lower ",self.lower,highLowerLimit,lowLowerLimit)
+        print("POSITION",self.position,lower,upper)
+        # you can only write registers if the motor is available.
+        #if self.available and self.connected and self.position > lower and self.position < upper:
+        if self.available and self.connected:
+            try:
+                self.client.write_register(0x0386, 0, unit=self.unit)
+                self.client.write_register(0x0387, 2, unit=self.unit)
+                self.client.write_register(0x0388, highUpperLimit, unit=self.unit)
+                self.client.write_register(0x0389, lowUpperLimit, unit=self.unit)
+                self.client.write_register(0x038A, highLowerLimit, unit=self.unit)
+                self.client.write_register(0x038B, lowLowerLimit, unit=self.unit)
+                print("SET UNIT ",self.unit," Hard Upper ",upper,highUpperLimit,lowUpperLimit," Hard Lower ",lower,highLowerLimit,lowLowerLimit)
+            except:
+                print("UNIT ",self.unit,"EXCEEDED A HARD LIMIT")
+                return SETERROR
+        
+        return True
 
 
 class InputControl:
@@ -1229,7 +1371,7 @@ class LocalIO:
     def _init_(self, filename):
         self.filename = filename
 
-    def readDflt(self):
+    def readDflt(self, reset=1):
         """
         Read the default tablet settings.
          .
@@ -1237,9 +1379,9 @@ class LocalIO:
         """
         # filename = askopenfilename(initialdir="./", title="Select file",
         #                                             filetypes=(("default files", "*.dft"), ("all files", "*.*")))
+        global user_menus
         global tab1, tab2, tab3, tab4
         global tmp1, tmp2, tmp3, tmp4
-        global pos1, pos2, pos3, pos4
         global jog1, jog2, jog3, jog4
 
         filename = DFLT_POSIX
@@ -1251,6 +1393,9 @@ class LocalIO:
         t1 = t2 = t3 = t4 = 0
         for record in records:
             line = record.split()
+            if line[1] == 'USER':
+                user_menus = line[3]
+                continue
             if line[1] == 'jog':
                 if line[0] == str(1) and not j1:
                     j1 = 1
@@ -1277,31 +1422,23 @@ class LocalIO:
                     if line[0] == str(1) and not t1:
                         t1 = 1
                         tab1 = []
-                        tmp1 = []
                     if line[0] == str(2) and not t2:
                         t2 = 1
                         tab2 = []
-                        tmp2 = []
                     if line[0] == str(3) and not t3:
                         t3 = 1
                         tab3 = []
-                        tmp3 = []
                     if line[0] == str(4) and not t4:
                         t4 = 1
                         tab4 = []
-                        tmp4 = []
                     if line[0] == str(1) and t1:
                         tab1.append(line)
-                        tmp1.append(line)
                     if line[0] == str(2) and t2:
                         tab2.append(line)
-                        tmp2.append(line)
                     if line[0] == str(3) and t3:
                         tab3.append(line)
-                        tmp3.append(line)
                     if line[0] == str(4) and t4:
                         tab4.append(line)
-                        tmp4.append(line)
                 if line[1] == 'ref':
                     if line[0] == str(1):
                         M1.reference = int(line[2])
@@ -1311,11 +1448,6 @@ class LocalIO:
                         M3.reference = int(line[2])
                     if line[0] == str(4):
                         M4.reference = int(line[2])
-
-        pos1 = copy.deepcopy(tab1)
-        pos2 = copy.deepcopy(tab2)
-        pos3 = copy.deepcopy(tab3)
-        pos4 = copy.deepcopy(tab4)
 
         tmp1 = copy.deepcopy(tab1)
         tmp2 = copy.deepcopy(tab2)
@@ -1328,6 +1460,8 @@ class LocalIO:
         main.title('GAP Motor Control: using ' + str(filename))
         main.title('DEFAULT settings: ' + str(filename))
         main.config()
+        if reset == 1:
+            updateTabs()
         return filename
 
     def readConfig(self):
@@ -1422,31 +1556,23 @@ class LocalIO:
                 if line[1] != 'res' and line[1] != 'ref':
                     if line[0] == str(1) and not t1:
                         t1 = 1
-                        tab1 = []
                         tmp1 = []
                     if line[0] == str(2) and not t2:
                         t2 = 1
-                        tab2 = []
                         tmp2 = []
                     if line[0] == str(3) and not t3:
                         t3 = 1
-                        tab3 = []
                         tmp3 = []
                     if line[0] == str(4) and not t4:
                         t4 = 1
-                        tab4 = []
                         tmp4 = []
                     if line[0] == str(1) and t1:
-                        tab1.append(line)
                         tmp1.append(line)
                     if line[0] == str(2) and t2:
-                        tab2.append(line)
                         tmp2.append(line)
                     if line[0] == str(3) and t3:
-                        tab3.append(line)
                         tmp3.append(line)
                     if line[0] == str(4) and t4:
-                        tab4.append(line)
                         tmp4.append(line)
                 if line[1] == 'ref':
                     if line[0] == str(1):
@@ -1458,6 +1584,11 @@ class LocalIO:
                     if line[0] == str(4):
                         M4.reference = int(line[2])
 
+        tab1 = copy.deepcopy(tmp1)
+        tab2 = copy.deepcopy(tmp2)
+        tab3 = copy.deepcopy(tmp3)
+        tab4 = copy.deepcopy(tmp4)
+ 
         filename = path.basename(filename)
         main.title('GAP Motor Control: using ' + str(filename))
         main.title('USER settings: ' + str(filename))
@@ -1545,7 +1676,7 @@ class LocalIO:
         rs = tk.StringVar()
         rs = tk.Entry(pw, font='Ariel 13', width=10, justify=RIGHT, borderwidth=2)
         rs.grid(row=1, column=3)
-        b1 = tk.Button(pw, text="Enter", font='Ariel 13', command=partial(F.chkPassword, pswd, rs), pady=2, height=0, width=4, relief='ridge')
+        b1 = tk.Button(pw, text="Enter", font='Ariel 13', command=partial(F.chkPassword, pswd, rs), pady=2, height=0, width=4, relief="raised")
         b1.grid(row=1, column=5)
 
         pswd.mainloop()
@@ -1713,8 +1844,8 @@ class LocalIO:
         u[3].grid(row=6, column=11)
         u[4].grid(row=7, column=11)
 
-        b1 = tk.Button(page[0], text="Save", font=6, command=partial(F.saveCfg, conf), pady=2, height=0, width=4, relief='ridge')
-        b2 = tk.Button(page[0], text="Cancel", font=6, command=partial(conf.destroy), padx=2, height=0, width=6, relief='ridge')
+        b1 = tk.Button(page[0], text="Save", font=6, command=partial(F.saveCfg, conf), pady=2, height=0, width=4, relief="raised")
+        b2 = tk.Button(page[0], text="Cancel", font=6, command=partial(conf.destroy), padx=2, height=0, width=6, relief="raised")
         b1.grid(row=9, column=9)
         b2.grid(row=9, column=3)
 
@@ -1765,13 +1896,36 @@ class TabControl:
             print("GET Radio >>> ", unit, closest, position)
         return closest
 
+    def setRadiobutton(self, unit, position):
+        """
+        Sets the RadioButton that matches the motor position.
+
+        :param unit: motor index number
+        :param tablist: contents array for the selected tablet
+        :return: none.
+        """
+        
+        if unit == 1:
+            closest = T.getClosest(unit, position, tab1)
+            if M1.diff == 0:
+                slide.set(closest)
+            else:
+                slide.set(20)
+            #print("SEND SLIDE ",position," DIFF ",M1.diff)
+        if unit == 2:
+            closest = T.getClosest(unit, position, tab2)
+            if M2.diff == 0:
+                slide.set(closest)
+            else:
+                slide.set(20)
+
     def getClosest(self, unit, position, tablist):
         """
         Gets the RadioButton that matches the motor position.
 
         :param unit: motor index number
+        :param position: motor position
         :param tablist: contents array for the selected tablet
-        :param page: associated page number for the tablist
         :return: the RadioButton number found
         """
 
@@ -1781,35 +1935,62 @@ class TabControl:
         list_of_numbers = [int(i[2]) for i in tablist]
         closest = min(enumerate(list_of_numbers), key=lambda ix: (abs(ix[1] - position)))[0]
 
+        self.chkClosest(unit, position, closest)
+
         return closest
 
-    def chkClosest(self, unit, position, tablist):
+    def chkClosest(self, unit, position, closest):
         """
-        Checks for a position offset of the motor for the closesst RadioButton.
+        Checks the motor position for the RadioButton that matches.
 
         :param unit: motor index number
+        :param position: motor position
         :param tablist: contents array for the selected tablet
-        :param page: associated page number for the tablist
+        :param closest: associated selection from the tablist
         :return: none
         """
+
+        if unit == 1:
+            tablist = copy.deepcopy(tab1)
+        
+        if unit == 2:
+            tablist = copy.deepcopy(tab2)        
+        
         if unit > 2:
             return
-        
+
+        list_of_numbers = [int(i[2]) for i in tablist]
         nearest = list_of_numbers[closest]
         difference = position - nearest
+
+        if DBG2:
+            print("NEAREST " + str(nearest))
+            print("POSITION " + str(position))
+            print("DIFFERENCE " + str(difference))
 
         name = tablist[closest][3] 
         if len(tablist[closest]) == 5:
             name += " " + tablist[closest][4]
+        #msg =  "Motor " + str(unit) + " is off " + str(difference) + " steps from " + name
+        if difference > 0:
+            msg = "Off +" + str(difference) + " steps from " + name
+        elif difference < 0:
+            msg =  "Off " + str(difference) + " steps from " + name
+        elif difference == 0:
+            msg =  "Exactly on " + name
 
-        msg = "Motor " + str(unit) +  " is off " + str(difference) + " steps from "  + name   
         if abs(difference) > 0:
             message(unit, 1, msg)
+            if unit == 1:
+                M1.diff = 1
+            if unit == 2:
+                M2.diff = 1
         else:
-            message(unit, 0, msg)
-        
-        if abs(difference) > 0:
-            message = "Notice: Motor is off " + str(difference) + " steps. Click selection."
+            message(unit, 1, msg)
+            if unit == 1:
+                M1.diff = 0
+            if unit == 2:
+                M2.diff = 0
 
     def resetTab(self):
         """
@@ -1842,7 +2023,7 @@ class TabControl:
         except:
             return
 
-    def setLimits(self):
+    def showLimits(self):
         """
         Toggle show/hide limits
         """
@@ -1864,16 +2045,17 @@ class TabControl:
         :param closest:
         :return:
         """
-        global tab1, tab2, tmp1, tmp2
+        global tab1, tab2, tmp1, tmp2, user_menus
+        
+        if user_menus != "enable":
+            return
 
         if unit == 1:
             closest = T.getClosest(unit, position, tab1)
             tmp1[closest][2] = position
-            tab1 = copy.deepcopy(tmp1)
         if unit == 2:
             closest = T.getClosest(unit, position, tab2)
             tmp2[closest][2] = position
-            tab2 = copy.deepcopy(tmp2)
 
 class MakeTab:
     '''
@@ -1906,6 +2088,7 @@ class MakeTab:
         :param unit: motor index number.
         :return:
         """
+        global select
 
         nb.add(page[1], text="Slide", sticky='NESW')
 
@@ -1935,12 +2118,12 @@ class MakeTab:
             if line[1] == 'jog':
                 if int(line[2]) < 0:
                     ##print(line[2])
-                    tk.Button(page[1], font='Ariel 12', text=line[3], command=partial(M1.jogMotor, line[2]), padx=40,
-                              relief='ridge').place(x=380, y=jogS+30+row1*20, width=50, height=22)
+                    tk.Button(page[1], font='Ariel 12', text=line[3], command=partial(M1.jogMotor, line[2]), padx=40, bd=3,
+                              relief="raised").place(x=380, y=jogS+30+row1*20, width=50, height=22)
                     row1 = row1 + 1
                 if int(line[2]) > 0:
-                    tk.Button(page[1], font='Ariel 12', text=line[3], command=partial(M1.jogMotor, line[2]), padx=40,
-                              relief='ridge').place(x=428, y=jogS+30+row2*20, width=50, height=22)
+                    tk.Button(page[1], font='Ariel 12', text=line[3], command=partial(M1.jogMotor, line[2]), padx=40, bd=3,
+                              relief="raised").place(x=428, y=jogS+30+row2*20, width=50, height=22)
                     row2 = row2 + 1
 
         tk.Button(page[1], font='Ariel 13', text="Go", command=partial(M1.getTarget), padx=40).place(x=215, y=175, width=30, height=20)
@@ -1979,12 +2162,12 @@ class MakeTab:
         for line in jog2:
             if line[1] == 'jog':
                 if int(line[2]) < 0:
-                    tk.Button(page[2], font='Ariel 12', text=line[3], command=partial(M2.jogMotor, line[2]), padx=40,
-                              relief='ridge').place(x=380, y=jogS+30+row1*20, width=50, height=22)
+                    tk.Button(page[2], font='Ariel 12', text=line[3], command=partial(M2.jogMotor, line[2]), padx=40, bd=3,
+                              relief="raised").place(x=380, y=jogS+30+row1*20, width=50, height=22)
                     row1 = row1 + 1
                 if int(line[2]) > 0:
-                    tk.Button(page[2], font='Ariel 12', text=line[3], command=partial(M2.jogMotor, line[2]), padx=40,
-                              relief='ridge').place(x=428, y=jogS+30+row2*20, width=50, height=22)
+                    tk.Button(page[2], font='Ariel 12', text=line[3], command=partial(M2.jogMotor, line[2]), padx=40, bd=3,
+                              relief="raised").place(x=428, y=jogS+30+row2*20, width=50, height=22)
                     row2 = row2 + 1
 
         tk.Button(page[2], font='Ariel 13', text="Go", command=partial(M2.getTarget), padx=40).place(x=215, y=175, width=30, height=20)
@@ -2007,12 +2190,14 @@ class MakeTab:
 
         jogN = len(jog3)
         jogR = jogN * 20
-        jogS = 110 - jogR / 4
+        jogS = 120 - jogR / 4
 
         tk.Label(page[3], font='Ariel 13', text="Grating 1 angle is").place(x=30, y=50, width=150, height=25)
         tk.Label(page[3], font='Ariel 13', text="Current location").place(x=30, y=100, width=150, height=25)
         tk.Label(page[3], font='Ariel 13', text="Enter new location").place(x=30, y=150, width=150, height=25)
-        tk.Label(page[3], font='Ariel 13', text="Jog").place(x=350, y=jogS, width=150, height=25)
+        tk.Label(page[3], font='Ariel 13', text="Jog").place(x=350, y=jogS-20, width=150, height=25)
+        tk.Label(page[3], font='Ariel 9', text="CW", fg="Blue").place(x=380, y=jogS+5, width=50, height=25)
+        tk.Label(page[3], font='Ariel 9', text="CCW", fg="Red").place(x=428, y=jogS+5, width=50, height=25)
         tk.Label(page[3], font=10, text=steps + " steps per " + degree + u"\u00b0").place(x=30, y=200, width=150, height=25)
         #tk.Label(page[3], font=10, text=msg).place(x=30, y=200, width=150, height=25)
 
@@ -2036,12 +2221,12 @@ class MakeTab:
         for line in jog3:
             if line[1] == 'jog':
                 if int(line[2]) < 0:
-                    tk.Button(page[3], font='Ariel 12', text=line[3], command=partial(M3.jogMotor, line[2]), padx=40,
-                              relief='ridge').place(x=380, y=jogS+30+row1*20, width=50, height=22)
+                    tk.Button(page[3], font='Ariel 12', text=line[3], command=partial(M3.jogMotor, line[2]), padx=40, bd=3,
+                              relief="raised").place(x=380, y=jogS+30+row1*20, width=50, height=22)
                     row1 = row1 + 1
                 if int(line[2]) > 0:
-                    tk.Button(page[3], font='Ariel 12', text=line[3], command=partial(M3.jogMotor, line[2]), padx=40,
-                              relief='ridge').place(x=428, y=jogS+30+row2*20, width=50, height=22)
+                    tk.Button(page[3], font='Ariel 12', text=line[3], command=partial(M3.jogMotor, line[2]), padx=40, bd=3,
+                              relief="raised").place(x=428, y=jogS+30+row2*20, width=50, height=22)
                     row2 = row2 + 1
 
         tk.Button(page[3], font='Ariel 13', text="Go", fg="red", command=partial(M3.getTarget), padx=40).place(x=275, y=150, width=30, height=20)
@@ -2061,12 +2246,14 @@ class MakeTab:
 
         jogN = len(jog4)
         jogR = jogN * 20
-        jogS = 110 - jogR / 4
+        jogS = 120 - jogR / 4
 
         tk.Label(page[4], font='Ariel 13', text="Grating 2 angle is").place(x=30, y=50, width=150, height=25)
         tk.Label(page[4], font='Ariel 13', text="Current location").place(x=30, y=100, width=150, height=25)
         tk.Label(page[4], font='Ariel 13', text="Enter new location").place(x=30, y=150, width=150, height=25)
-        tk.Label(page[4], font='Ariel 13', text="Jog").place(x=350, y=jogS, width=150, height=25)
+        tk.Label(page[4], font='Ariel 13', text="Jog").place(x=350, y=jogS-20, width=150, height=25)
+        tk.Label(page[4], font='Ariel 9', text="CW", fg="Blue").place(x=380, y=jogS+5, width=50, height=25)
+        tk.Label(page[4], font='Ariel 9', text="CCW", fg="Red").place(x=428, y=jogS+5, width=50, height=25)
         tk.Label(page[4], font=10, text=steps + " steps per " + degree + u"\u00b0").place(x=30, y=200, width=150, height=25)
 
         row = 0
@@ -2089,12 +2276,12 @@ class MakeTab:
         for line in jog4:
             if line[1] == 'jog':
                 if int(line[2]) < 0:
-                    tk.Button(page[4], font='Ariel 12', text=line[3], command=partial(M4.jogMotor, line[2]), padx=40,
-                              relief='ridge').place(x=380, y=jogS+30+row1*20, width=50, height=22)
+                    tk.Button(page[4], font='Ariel 12', text=line[3], command=partial(M4.jogMotor, line[2]), padx=40, bd=3,
+                              relief="raised").place(x=380, y=jogS+30+row1*20, width=50, height=22)
                     row1 = row1 + 1
                 if int(line[2]) > 0:
-                    tk.Button(page[4], font='Ariel 12', text=line[3], command=partial(M4.jogMotor, line[2]), padx=40,
-                              relief='ridge').place(x=428, y=jogS+30+row2*20, width=50, height=22)
+                    tk.Button(page[4], font='Ariel 12', text=line[3], command=partial(M4.jogMotor, line[2]), padx=40, bd=3,
+                              relief="raised").place(x=428, y=jogS+30+row2*20, width=50, height=22)
                     row2 = row2 + 1
 
         tk.Button(page[4], font='Ariel 13', text="Go", fg="red", command=partial(M4.getTarget), padx=40).place(x=275, y=150, width=30, height=20)
@@ -2134,21 +2321,24 @@ class MakeTab:
 # global variables
 # com ports
 ports = list(serial.tools.list_ports.comports())
+print("PORTS ",ports)
 
 if DBG:
     print(f">>> Ports: {ports}")
     i = 0
     for p, q, r in ports:
         i += 1
-        if r.find("FTDIBUS") >= 0:
+
+        print("R=",r)
+        if r.find("FTDIBUS") or r.find("USB VID")  >= 0:
             print(f">>> RS485 P {p}, Q {q}, R {r}")
             port485 = p
         else:
             print(f">>> Found Motor {i} port {p}")
 
 # do full initialization of the objects
-port485 = "COM4"
-port485b = "COM7"
+#port485 = "COM4"
+#port485b = "COM7"
 
 M1 = MotorControl(1, port485, 1000, 0, 3000, 0, 8000, 1000, 0, 8000, 1)
 M2 = MotorControl(2, port485, 100, 0, 0, 0, 1000, 1000, 0, 1000, 1)
@@ -2167,7 +2357,6 @@ main = tk.Tk()
 main.wm_title('GAP Motor Control')
 main.geometry('550x300')
 menubar = tk.Menu(main)
-menu()
 
 # Gets both half the screen width/height and window width/height
 _positionRight = int(main.winfo_screenwidth()/2 - main.winfo_reqwidth()/1)
@@ -2188,7 +2377,8 @@ T = TabControl()
 #str1 = tk.StringVar()
 #str2 = tk.StringVar()
 
-fname = F.readDflt()
+fname = F.readDflt(reset=0)
+menu()
 
 slide = tk.IntVar()
 source = tk.IntVar()

@@ -1,0 +1,19 @@
+# GAPMC configuration
+#tab 	 key 	 value 	 labels
+#1 	 tab 	 1 	 Slide
+1	 mech	 1000	 Mechelle
+1	 wide	 20000	 Wide	 Field
+1	 slit	 298769	 Slit	 Eyepiece
+1	 eye	 300000	 Eyepiece
+1	 ccd	 420405	 Slit	 TV
+1	 comp	 524000	 Comparison
+#2 	 tab 	 2 	 Comparisons
+2	 neon	 200	 Neon	 Lamp
+2	 flat	 500	 Flat	 Lamp
+2	 fear	 700	 Iron-Argon
+2	 hgvp	 900	 Mercury	 Vapor
+2	 thrm	 1000	 Thorium
+#3 	 tab 	 3 	 Grating 1
+3	 tab	 0	 0
+#4 	 tab 	 4 	 Grating 2
+4	 tab	 0	 0

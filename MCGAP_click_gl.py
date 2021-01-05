@@ -49,10 +49,11 @@ log = logging.getLogger()
 READERROR = -999  # returned when can't read a motor
 ATLIMIT = -888
 filemenu = 0
+user_menus = "disable"
 limitSet = "Show"
-TEST = 1
+TEST = 0
 DBG = 1
-DBG2 = 0
+DBG2 = 1
 
 # Initialize arrays
 e = [0, 0, 0, 0, 0, 0, 0, 0]
@@ -61,6 +62,7 @@ o = [0, 0, 0, 0, 0]
 s = [0, 0, 0, 0, 0]
 u = [0, 0, 0, 0, 0]
 z = [0, 0, 0, 0, 0]
+d = [0, 0, 0, 0, 0]
 
 jog1 = jog2 = jog3 = jog4 = []
 tab1 = tab2 = tab3 = tab4 = []
@@ -110,11 +112,12 @@ def menu():
     """
     Create a pulldown file menu, and add it to the menu bar
     """
-    global filemenu
+    global filemenu, user_menus
 
     filemenu = tk.Menu(menubar, tearoff=0)
-    filemenu.add_command(label="Open User Settings", font='Ariel 13', command=F.readUser)
-    filemenu.add_command(label="Save User Settings", font='Ariel 13', command=F.saveUser)
+    if user_menus == "enabled":
+        filemenu.add_command(label="Open User Settings", font='Ariel 13', command=F.readUser)
+        filemenu.add_command(label="Save User Settings", font='Ariel 13', command=F.saveUser)
     filemenu.add_command(label="Reset to Orig Defaults", font='Ariel 13', command=F.readDflt)
     filemenu.add_command(label="Configure Motors", font='Ariel 13', command=F.getPassword)
     filemenu.add_separator()
@@ -253,10 +256,22 @@ def updateTabs():
     """
     global page
 
-    nb.forget(page[1])
-    nb.forget(page[2])
-    nb.forget(page[3])
-    nb.forget(page[4])
+    try:
+        nb.forget(page[1])
+    except:
+        print("Page[1] does not exist")
+    try:
+        nb.forget(page[2])
+    except:
+        print("Page[2] does not exist")
+    try:
+        nb.forget(page[3])
+    except:
+        print("Page[3] does not exist")
+    try:
+        nb.forget(page[4])
+    except:
+        print("Page[4] does not exist")
     page = ["page[0]", "page[1]", "page[2]", "page[3]", "page[4]"]
     # this is very dangerous since recursive call to run... -egs-
     run()
@@ -290,6 +305,8 @@ class MotorControl:
         self.connected = False
         self.available = self.isAvailable()
         self.resolution = self.getGearing(gearBox)
+        self.done = 1
+        self.redo = 0
 
     def isAvailable(self):
         """
@@ -384,7 +401,7 @@ class MotorControl:
             self.available = True
             return True
 
-        self.client = ModbusClient(method='rtu', port=self.port, rtscts=True, parity='E',
+        self.client = ModbusClient(method='rtu', port=self.port, rtscts=True, parity='E', stopbits=1,
                                    baudrate=9600, strict=False, unit=self.unit)
 
         if isinstance(self.client, ConnException):
@@ -440,7 +457,7 @@ class MotorControl:
         :param: delta correction for new motor position
         :return: new position, or READERROR otherwise
         """
-        global tk
+        global tk, delay
         cp = READERROR
 
         if DBG:
@@ -457,11 +474,16 @@ class MotorControl:
             T.setTmpArr(self.unit, self.position)
             return self.position
 
+        if self.done == 0:
+            d[self.redo] = delta
+            self.redo += 1
+            return
+
         cp = self.readMotor()
         if cp == READERROR:
             print(f"!!! jogMotor: can't get unit {self.unit} motor position")
             return READERROR
-
+      
         jogPosition = int(delta) + cp
 
         self.sendMotor(jogPosition)
@@ -494,6 +516,11 @@ class MotorControl:
             if DBG:
                 print(f"??? jogMotor jogPos {jogPosition}, rp: {rp}")
             return READERROR
+
+        print("REDO " + str(self.redo))
+        if self.redo > 0:
+            self.redo -= 1
+            self.jogMotor(d[self.redo])
 
         # all ok, return position
         return rp
@@ -542,7 +569,7 @@ class MotorControl:
             alarm = read.registers[0]  # returned 32 with normal operation
             read = self.client.read_holding_registers(0x0081, 1, unit=self.unit)
             if read.isError():
-                print(f"!!! checkAlrm: got modbus exception: {ExceptionCodes.get(read.exception_code)}")
+                print("!!! checkAlrm: got modbus exception: ", ExceptionCodes.get(read.exception_code))
                 return False
             else:
                 alarm = read.registers[0]
@@ -616,7 +643,7 @@ class MotorControl:
         :return: motor position in user steps, READERROR if error
         """
 
-        global tk
+        global tk, delay
         reps = 0
         atlimit = 0
 
@@ -683,6 +710,7 @@ class MotorControl:
                 return ATLIMIT
             reps += 1
             if rp == self.target:
+                self.done = 1
                 break
         # end while
 
@@ -824,6 +852,7 @@ class MotorControl:
             print("!!! sendMotor: SEND IS OUT OF RANGE. RETURN")
             return READERROR
 
+        self.done = 0
         # get the desired target position
         setPosition = int(self.target)
 
@@ -970,6 +999,9 @@ class MotorControl:
 
         if DBG:
             print(f">>> setMotor: Unit {self.unit}, to {location}")
+
+        if self.done == 0:
+            return
 
         res = self.sendMotor(location)
 
@@ -1237,6 +1269,7 @@ class LocalIO:
         """
         # filename = askopenfilename(initialdir="./", title="Select file",
         #                                             filetypes=(("default files", "*.dft"), ("all files", "*.*")))
+        global user_menus
         global tab1, tab2, tab3, tab4
         global tmp1, tmp2, tmp3, tmp4
         global pos1, pos2, pos3, pos4
@@ -1251,6 +1284,9 @@ class LocalIO:
         t1 = t2 = t3 = t4 = 0
         for record in records:
             line = record.split()
+            if line[1] == 'USER':
+                user_menus = line[3]
+                continue
             if line[1] == 'jog':
                 if line[0] == str(1) and not j1:
                     j1 = 1
@@ -1487,10 +1523,10 @@ class LocalIO:
         hdr2 = "#2 \t tab \t 2 \t Comparisons\n"
         hdr3 = "#3 \t tab \t 3 \t Grating 1\n"
         hdr4 = "#4 \t tab \t 4 \t Grating 2\n"
-        str1 = I.convertL2S(tmp1)
-        str2 = I.convertL2S(tmp2)
-        str3 = I.convertL2S(tmp3)
-        str4 = I.convertL2S(tmp4)
+        str1 = I.convertL2S(tab1)
+        str2 = I.convertL2S(tab2)
+        str3 = I.convertL2S(tab3)
+        str4 = I.convertL2S(tab4)
 
         # build file
         records = []
@@ -1770,8 +1806,8 @@ class TabControl:
         Gets the RadioButton that matches the motor position.
 
         :param unit: motor index number
+        :param position: motor position
         :param tablist: contents array for the selected tablet
-        :param page: associated page number for the tablist
         :return: the RadioButton number found
         """
 
@@ -1781,35 +1817,48 @@ class TabControl:
         list_of_numbers = [int(i[2]) for i in tablist]
         closest = min(enumerate(list_of_numbers), key=lambda ix: (abs(ix[1] - position)))[0]
 
+        self.chkClosest(unit, position, closest)
+
         return closest
 
-    def chkClosest(self, unit, position, tablist):
+    def chkClosest(self, unit, position, closest):
         """
-        Checks for a position offset of the motor for the closesst RadioButton.
+        Checks the motor position for the RadioButton that matches.
 
         :param unit: motor index number
+        :param position: motor position
         :param tablist: contents array for the selected tablet
-        :param page: associated page number for the tablist
+        :param closest: associated selection from the tablist
         :return: none
         """
+
+        if unit == 1:
+            tablist = copy.deepcopy(pos1)
+        
+        if unit == 2:
+            tablist = copy.deepcopy(pos2)        
+        
         if unit > 2:
             return
-        
+
+        list_of_numbers = [int(i[2]) for i in tablist]
         nearest = list_of_numbers[closest]
         difference = position - nearest
+
+        if DBG2:
+            print("NEAREST " + str(nearest))
+            print("POSITION " + str(position))
+            print("DIFFERENCE " + str(difference))
 
         name = tablist[closest][3] 
         if len(tablist[closest]) == 5:
             name += " " + tablist[closest][4]
-
-        msg = "Motor " + str(unit) +  " is off " + str(difference) + " steps from "  + name   
+        msg =  "Motor " + str(unit) + " is off " + str(difference) + " steps from " + name
+        
         if abs(difference) > 0:
             message(unit, 1, msg)
         else:
             message(unit, 0, msg)
-        
-        if abs(difference) > 0:
-            message = "Notice: Motor is off " + str(difference) + " steps. Click selection."
 
     def resetTab(self):
         """
@@ -2007,12 +2056,14 @@ class MakeTab:
 
         jogN = len(jog3)
         jogR = jogN * 20
-        jogS = 110 - jogR / 4
+        jogS = 120 - jogR / 4
 
         tk.Label(page[3], font='Ariel 13', text="Grating 1 angle is").place(x=30, y=50, width=150, height=25)
         tk.Label(page[3], font='Ariel 13', text="Current location").place(x=30, y=100, width=150, height=25)
         tk.Label(page[3], font='Ariel 13', text="Enter new location").place(x=30, y=150, width=150, height=25)
-        tk.Label(page[3], font='Ariel 13', text="Jog").place(x=350, y=jogS, width=150, height=25)
+        tk.Label(page[3], font='Ariel 13', text="Jog").place(x=350, y=jogS-20, width=150, height=25)
+        tk.Label(page[3], font='Ariel 9', text="CW").place(x=380, y=jogS+5, width=50, height=25)
+        tk.Label(page[3], font='Ariel 9', text="CCW").place(x=428, y=jogS+5, width=50, height=25)
         tk.Label(page[3], font=10, text=steps + " steps per " + degree + u"\u00b0").place(x=30, y=200, width=150, height=25)
         #tk.Label(page[3], font=10, text=msg).place(x=30, y=200, width=150, height=25)
 
@@ -2061,12 +2112,14 @@ class MakeTab:
 
         jogN = len(jog4)
         jogR = jogN * 20
-        jogS = 110 - jogR / 4
+        jogS = 120 - jogR / 4
 
         tk.Label(page[4], font='Ariel 13', text="Grating 2 angle is").place(x=30, y=50, width=150, height=25)
         tk.Label(page[4], font='Ariel 13', text="Current location").place(x=30, y=100, width=150, height=25)
         tk.Label(page[4], font='Ariel 13', text="Enter new location").place(x=30, y=150, width=150, height=25)
-        tk.Label(page[4], font='Ariel 13', text="Jog").place(x=350, y=jogS, width=150, height=25)
+        tk.Label(page[4], font='Ariel 13', text="Jog").place(x=350, y=jogS-20, width=150, height=25)
+        tk.Label(page[4], font='Ariel 9', text="CW").place(x=380, y=jogS+5, width=50, height=25)
+        tk.Label(page[4], font='Ariel 9', text="CCW").place(x=428, y=jogS+5, width=50, height=25)
         tk.Label(page[4], font=10, text=steps + " steps per " + degree + u"\u00b0").place(x=30, y=200, width=150, height=25)
 
         row = 0
